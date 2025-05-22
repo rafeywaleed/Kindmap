@@ -1,0 +1,2 @@
+D:/kindmap/android/app/.cxx/Debug/ze2sc6f6/x86/CMakeFiles/edit_cache.dir
+D:/kindmap/android/app/.cxx/Debug/ze2sc6f6/x86/CMakeFiles/rebuild_cache.dir

@@ -17,12 +17,13 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/main.dart';
 import 'package:kindmap/map.dart';
+import 'package:kindmap/Services/web_utils_stub.dart';
 
 import 'package:kindmap/themes/kmTheme.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../Services/map_services.dart';
-import 'package:kindmap/Services/web_utils_web.dart';
+import 'package:kindmap/Services/web_utils.dart';
 
 class AnimationInfo {
   final AnimationTrigger trigger;
@@ -318,10 +319,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     try {
       if (kIsWeb) {
-        // Web implementation
-        WebUtilsImpl.openUrl(url);
+        await getWebUtils().openUrl(url);
       } else {
-        // Android implementation
         final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
           await launchUrl(
@@ -483,12 +482,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                   .instance.currentUser?.uid)
                                               .snapshots(),
                                           builder: ((context, snapshot) {
-                                            if (snapshot.hasData) {
+                                            if (snapshot.hasData &&
+                                                snapshot.data?.data() != null) {
+                                              final data =
+                                                  snapshot.data!.data()!;
                                               int? avatarIndex =
-                                                  snapshot.data?['avatarIndex'];
+                                                  data['avatarIndex'];
                                               return FittedBox(
-                                                  child: Image.asset(
-                                                      'assets/images/avatar${avatarIndex}.png'));
+                                                child: Image.asset(
+                                                    'assets/images/avatar${avatarIndex ?? 0}.png'),
+                                              );
                                             }
                                             return const Center(
                                                 child:
@@ -512,22 +515,24 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                                 .instance.currentUser?.uid)
                                             .snapshots(),
                                         builder: ((context, snapshot) {
-                                          if (snapshot.hasData) {
+                                          if (snapshot.hasData &&
+                                              snapshot.data?.data() != null) {
+                                            final data = snapshot.data!.data()!;
+                                            final name =
+                                                data['name'] ?? 'No Name';
                                             return FittedBox(
-                                              child: Text(
-                                                snapshot.data!['name'],
-                                                style: KMTheme.of(context)
-                                                    .bodyMedium
-                                                    .copyWith(
-                                                      fontFamily:
-                                                          'Plus Jakarta Sans',
-                                                      fontSize: 22.5,
-                                                      letterSpacing: 0,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                              ),
-                                            );
+                                                child: Text(
+                                              name,
+                                              style: KMTheme.of(context)
+                                                  .bodyMedium
+                                                  .copyWith(
+                                                    fontFamily:
+                                                        'Plus Jakarta Sans',
+                                                    fontSize: 22.5,
+                                                    letterSpacing: 0,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ));
                                           }
                                           return const Center(
                                               child: LinearProgressIndicator());
@@ -792,7 +797,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ),
             ),
           ).animateOnActionTrigger(
-            animationsMap['endDrawerOnActionTriggerAnimation']!,
+            animationsMap['endDrawerOnActionTriggerAnimation'] ??
+                AnimationInfo(
+                  trigger: AnimationTrigger.onActionTrigger,
+                  applyInitialState: true,
+                  effects: [],
+                ),
           ),
           appBar: AppBar(
             backgroundColor: KMTheme.of(context).secondaryBackground,

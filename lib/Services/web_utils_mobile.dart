@@ -1,10 +1,14 @@
 import 'package:url_launcher/url_launcher.dart';
 import 'web_utils.dart';
 
-class WebUtilsImpl implements WebUtils {
-  static Future<void> openUrl(String url) async {
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
+class WebUtilsMobile implements WebUtils {
+  @override
+  Future<void> openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
   }
 }
+
+WebUtils getWebUtils() => WebUtilsMobile();

@@ -1,3 +1,7 @@
 abstract class WebUtils {
-  static void openUrl(String url) {}
+  Future<void> openUrl(String url);
+  
+  static WebUtils getInstance() {
+    throw UnsupportedError('Platform implementation not found');
+  }
 }

@@ -1,6 +1,12 @@
-import 'dart:html' show window;
+// @dart=2.12
+import 'dart:html' as html;
 import 'web_utils.dart';
 
-class WebUtilsImpl implements WebUtils {
-  static void openUrl(String url) => window.open(url, '_blank');
+class WebUtilsWeb implements WebUtils {
+  @override
+  Future<void> openUrl(String url) async {
+    html.window.open(url, '_blank');
+  }
 }
+
+WebUtils getWebUtils() => WebUtilsWeb();
