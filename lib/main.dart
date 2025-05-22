@@ -11,6 +11,7 @@ import 'package:kindmap/Otherpages/PrivacyPolicy.dart';
 import 'package:kindmap/components/DetailBox.dart';
 import 'package:kindmap/components/PinBox.dart';
 import 'package:kindmap/fcm.dart';
+import 'package:kindmap/firebase_options.dart';
 import 'package:kindmap/map.dart';
 import 'package:kindmap/new_Auth/nAuth.dart';
 import 'package:kindmap/new_Auth/user.dart';
@@ -24,7 +25,6 @@ import 'package:kindmap/Homepage/HomePage.dart';
 import 'package:kindmap/Profile/ProfilePage.dart';
 import 'package:kindmap/Settings/SettingsPage.dart';
 import 'package:kindmap/utils/color_extension.dart';
-
 import 'package:provider/provider.dart';
 import 'Services/map_services.dart';
 // import 'Services/platform_service.dart';
@@ -35,8 +35,6 @@ import 'Services/map_services.dart';
 final navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Add error handling for platform services
   try {
     if (kIsWeb) {
       await Firebase.initializeApp(

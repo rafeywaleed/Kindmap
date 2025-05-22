@@ -7,7 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' if (dart.library.html) 'dart:html' show window;
+import 'package:kindmap/Services/web_utils_web.dart';
 
 class PinBox extends StatefulWidget {
   final String timeleft;
@@ -66,7 +66,7 @@ class _PinBoxState extends State<PinBox> {
     try {
       if (kIsWeb) {
         // Web platform navigation
-        window.open(url, '_blank');
+        WebUtilsImpl.openUrl(url);
       } else {
         // Android platform navigation
         final uri = Uri.parse(url);

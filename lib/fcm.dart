@@ -11,7 +11,7 @@ Future<void> handleBackgroundMessage(RemoteMessage? message) async {
   if (message == null) return;
   // Handle background messages differently for web and mobile
   if (!kIsWeb) {
-    navigatorKey.currentState?.pushNamed('/map');
+    // navigatorKey.currentState?.pushNamed('/map');
   }
 }
 

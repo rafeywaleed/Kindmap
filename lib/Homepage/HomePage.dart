@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:html' if (dart.library.html) 'dart:html' show window;
 import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 // import 'package:aws_s3_upload/aws_s3_upload.dart';
@@ -17,13 +16,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/main.dart';
-import 'package:flutter/material.dart';
 import 'package:kindmap/map.dart';
 
 import 'package:kindmap/themes/kmTheme.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../Services/map_services.dart';
+import 'package:kindmap/Services/web_utils_web.dart';
 
 class AnimationInfo {
   final AnimationTrigger trigger;
@@ -320,7 +319,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     try {
       if (kIsWeb) {
         // Web implementation
-        window.open(url, '_blank');
+        WebUtilsImpl.openUrl(url);
       } else {
         // Android implementation
         final uri = Uri.parse(url);
@@ -736,10 +735,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               highlightColor:
                                                   Colors.transparent,
                                               onTap: () async {
-                                                Provider.of<ThemeProvider>(
-                                                        context,
-                                                        listen: false)
-                                                    .toggleTheme();
+                                                // Provider.of<ThemeProvider>(
+                                                //         context,
+                                                //         listen: false)
+                                                //     .toggleTheme();
                                               },
                                               child: Icon(
                                                 Icons.nights_stay,
@@ -765,10 +764,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               highlightColor:
                                                   Colors.transparent,
                                               onTap: () async {
-                                                Provider.of<ThemeProvider>(
-                                                        context,
-                                                        listen: false)
-                                                    .toggleTheme();
+                                                // Provider.of<ThemeProvider>(
+                                                //         context,
+                                                //         listen: false)
+                                                //     .toggleTheme();
                                               },
                                               child: Icon(
                                                 Icons.wb_sunny_rounded,
