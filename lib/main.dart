@@ -39,7 +39,7 @@ void main() async {
     if (kIsWeb) {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
-            apiKey: 'AIzaSyBBIuwNrITwg_fmeIkMGz2CZbkoNVKvP4g',
+            apiKey: 'AIzaSyAe9TdHxKi2Aa0ANh3wZWkUOiHPR5u094k',
             authDomain: 'kindmap-999d3.firebaseapp.com',
             projectId: 'kindmap-999d3',
             storageBucket: 'kindmap-999d3.appspot.com',
