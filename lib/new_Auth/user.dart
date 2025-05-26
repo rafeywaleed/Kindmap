@@ -94,50 +94,6 @@ class _LoginFormState extends State<LoginForm> {
     );
   }
 
-  Widget _buildAppleSignInButton() {
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(14, 0, 14, 16),
-      child: ElevatedButton(
-        onPressed: () {
-          print('Sign in with Apple hogaya ');
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: KMTheme.of(context).secondaryBackground,
-          padding: const EdgeInsets.fromLTRB(10, 20, 10, 20),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(40),
-            side: BorderSide(
-              color: KMTheme.of(context).alternate,
-              width: 2,
-            ),
-          ),
-        ),
-        child: Container(
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const FaIcon(
-                FontAwesomeIcons.apple,
-                size: 22,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                'Continue with Apple',
-                style: KMTheme.of(context).bodyLarge.copyWith(
-                      fontFamily: 'Readex Pro',
-                      letterSpacing: 0,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
@@ -571,10 +527,6 @@ class _LoginFormState extends State<LoginForm> {
                             ),
                           )),
                       _buildGoogleSignInButton(),
-                      if (!kIsWeb && Platform.isAndroid)
-                        const SizedBox.shrink()
-                      else
-                        _buildAppleSignInButton(),
                     ],
                   ),
                 ),

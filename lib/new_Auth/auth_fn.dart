@@ -3,7 +3,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:kindmap/new_Auth/platform_auth_service.dart';
 
@@ -19,11 +18,8 @@ class AuthServices {
 
       await userCredential.user!.updateDisplayName(name);
 
-      // Get FCM token based on platform
-      String? fcmToken;
-      if (!kIsWeb) {
-        fcmToken = await FirebaseMessaging.instance.getToken();
-      }
+      // Get FCM token for Android
+      String? fcmToken = await FirebaseMessaging.instance.getToken();
 
       // Save user data
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
@@ -31,7 +27,7 @@ class AuthServices {
         'email': email,
         'created': FieldValue.serverTimestamp(),
         'fcmToken': fcmToken,
-        'platform': kIsWeb ? 'web' : 'android',
+        'platform': 'android',
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -51,17 +47,12 @@ class AuthServices {
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
 
-      // Update FCM token on login
-      if (!kIsWeb) {
-        String? fcmToken = await FirebaseMessaging.instance.getToken();
-        await _firestore
-            .collection('users')
-            .doc(_auth.currentUser?.uid)
-            .update({
-          'fcmToken': fcmToken,
-          'lastLogin': FieldValue.serverTimestamp(),
-        });
-      }
+      // Update FCM token on login for Android
+      String? fcmToken = await FirebaseMessaging.instance.getToken();
+      await _firestore.collection('users').doc(_auth.currentUser?.uid).update({
+        'fcmToken': fcmToken,
+        'lastLogin': FieldValue.serverTimestamp(),
+      });
 
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Login Successful')));

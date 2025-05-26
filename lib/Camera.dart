@@ -1,6 +1,5 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'package:kindmap/Pin/PinPage.dart';
 import 'package:kindmap/themes/kmTheme.dart';
@@ -24,18 +23,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (!kIsWeb) {
-      _initializeCamera();
-    } else {
-      _initializeWebCamera();
-    }
-  }
-
-  Future<void> _initializeWebCamera() async {
-    // For web, we'll use image_picker instead of camera
-    setState(() {
-      _isCameraReady = true;
-    });
+    _initializeCamera();
   }
 
   Future<void> _initializeCamera() async {
@@ -56,7 +44,6 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
       _controller = CameraController(
         backCamera,
-        // Optimize resolution based on device
         ResolutionPreset.high,
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
@@ -67,9 +54,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
           setState(() {
             _isCameraReady = true;
           });
-          // Set optimal focus mode
           _controller.setFocusMode(FocusMode.auto);
-          // Set optimal exposure mode
           _controller.setExposureMode(ExposureMode.auto);
         }
       }).catchError((error) {
@@ -89,7 +74,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    if (!kIsWeb && _isCameraReady) {
+    if (_isCameraReady) {
       _controller.dispose();
     }
     super.dispose();
@@ -97,48 +82,26 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!kIsWeb) {
-      // Handle app lifecycle changes
-      if (state == AppLifecycleState.inactive) {
-        _controller.dispose();
-      } else if (state == AppLifecycleState.resumed) {
-        _initializeCamera();
-      }
+    // Handle app lifecycle changes
+    if (state == AppLifecycleState.inactive) {
+      _controller.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initializeCamera();
     }
   }
 
   Future<void> _handleImageCapture() async {
     try {
-      if (kIsWeb) {
-        // Web implementation - use image_picker
-        final ImagePicker picker = ImagePicker();
-        final XFile? image = await picker.pickImage(
-          source: ImageSource.camera,
-          imageQuality: 85,
-          maxWidth: 1920,
-          maxHeight: 1080,
-        );
+      if (!_controller.value.isInitialized) return;
 
-        if (image != null && mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(
-              builder: (context) => PinPage(imagePath: image.path),
-            ),
-          );
-        }
-      } else {
-        // Android implementation
-        if (!_controller.value.isInitialized) return;
+      final image = await _controller.takePicture();
+      if (!mounted) return;
 
-        final image = await _controller.takePicture();
-        if (!mounted) return;
-
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => PinPage(imagePath: image.path),
-          ),
-        );
-      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => PinPage(imagePath: image.path),
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error capturing image: $e')),
@@ -150,7 +113,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        if (!kIsWeb && _isCameraReady) {
+        if (_isCameraReady) {
           await _controller.dispose();
         }
         return true;
@@ -158,27 +121,7 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
       child: Scaffold(
         appBar: AppBar(title: const Text('Camera')),
         backgroundColor: KMTheme.of(context).primaryBackground,
-        body: _hasError
-            ? _buildErrorWidget()
-            : kIsWeb
-                ? _buildWebCamera()
-                : _buildNativeCamera(),
-      ),
-    );
-  }
-
-  Widget _buildWebCamera() {
-    return Center(
-      child: ElevatedButton.icon(
-        onPressed: _handleImageCapture,
-        icon: const Icon(Icons.camera_alt),
-        label: const Text('Take Photo'),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 32,
-            vertical: 16,
-          ),
-        ),
+        body: _hasError ? _buildErrorWidget() : _buildNativeCamera(),
       ),
     );
   }

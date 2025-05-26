@@ -19,7 +19,6 @@ import 'package:kindmap/themes/kmTheme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:kindmap/Camera.dart';
 import 'package:kindmap/Homepage/HomePage.dart';
 import 'package:kindmap/Profile/ProfilePage.dart';
@@ -35,33 +34,17 @@ import 'Services/map_services.dart';
 final navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    if (kIsWeb) {
-      await Firebase.initializeApp(
-        options: const FirebaseOptions(
-            apiKey: 'AIzaSyAe9TdHxKi2Aa0ANh3wZWkUOiHPR5u094k',
-            authDomain: 'kindmap-999d3.firebaseapp.com',
-            projectId: 'kindmap-999d3',
-            storageBucket: 'kindmap-999d3.appspot.com',
-            messagingSenderId: '403643543889',
-            appId: '1:403643543889:web:09434842b87df9163ae370',
-            measurementId: "G-66XDHJ7EB0"),
-      );
-    } else {
-      await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: 'AIzaSyBBIuwNrITwg_fmeIkMGz2CZbkoNVKvP4g',
-          appId: '1:403643543889:android:d9f0b2bf35c12e2d3ae370',
-          messagingSenderId: '403643543889',
-          projectId: 'kindmap-999d3',
-          storageBucket: 'gs://kindmap-999d3.appspot.com',
-        ),
-      );
-    }
-    await FCM().initNotifications();
-  } catch (e) {
-    print('Error initializing app: $e');
-  }
+
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: 'AIzaSyBBIuwNrITwg_fmeIkMGz2CZbkoNVKvP4g',
+      appId: '1:403643543889:android:d9f0b2bf35c12e2d3ae370',
+      messagingSenderId: '403643543889',
+      projectId: 'kindmap-999d3',
+      storageBucket: 'gs://kindmap-999d3.appspot.com',
+    ),
+  );
+  await FCM().initNotifications();
 
   runApp(
     MultiProvider(

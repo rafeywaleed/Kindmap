@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 // import 'package:aws_s3_upload/aws_s3_upload.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -17,13 +16,11 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/main.dart';
 import 'package:kindmap/map.dart';
-import 'package:kindmap/Services/web_utils_stub.dart';
 
 import 'package:kindmap/themes/kmTheme.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../Services/map_services.dart';
-import 'package:kindmap/Services/web_utils.dart';
 
 class AnimationInfo {
   final AnimationTrigger trigger;
@@ -140,29 +137,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<void> requestLocationPermission() async {
     try {
-      if (kIsWeb) {
-        final position = await _getWebLocation();
-        setState(() {
-          location = LatLng(position.latitude, position.longitude);
-        });
-      } else {
-        LocationPermission permission = await Geolocator.checkPermission();
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-          if (permission == LocationPermission.denied) {
-            throw Exception('Location permissions are denied');
-          }
+          throw Exception('Location permissions are denied');
         }
-
-        if (permission == LocationPermission.deniedForever) {
-          throw Exception('Location permissions are permanently denied');
-        }
-
-        final position = await Geolocator.getCurrentPosition();
-        setState(() {
-          location = LatLng(position.latitude, position.longitude);
-        });
       }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are permanently denied');
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        location = LatLng(position.latitude, position.longitude);
+      });
 
       // Subscribe to grid after getting location
       if (location != null) {
@@ -170,15 +160,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
     } catch (e) {
       print('Error requesting location permission: $e');
-    }
-  }
-
-  Future<Position> _getWebLocation() async {
-    try {
-      final position = await Geolocator.getCurrentPosition();
-      return position;
-    } catch (e) {
-      throw Exception('Failed to get web location: $e');
     }
   }
 
@@ -318,18 +299,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         'https://www.google.com/maps/dir/?api=1&destination=${target.latitude},${target.longitude}';
 
     try {
-      if (kIsWeb) {
-        await getWebUtils().openUrl(url);
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
       } else {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
-        } else {
-          throw 'Could not launch navigation';
-        }
+        throw 'Could not launch navigation';
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

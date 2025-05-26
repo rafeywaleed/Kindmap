@@ -2,17 +2,13 @@
 
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:kindmap/main.dart';
 
 Future<void> handleBackgroundMessage(RemoteMessage? message) async {
   if (message == null) return;
-  // Handle background messages differently for web and mobile
-  if (!kIsWeb) {
-    // navigatorKey.currentState?.pushNamed('/map');
-  }
+  // navigatorKey.currentState?.pushNamed('/map');
 }
 
 class FCM {
@@ -26,41 +22,7 @@ class FCM {
       importance: Importance.max);
 
   Future<void> initNotifications() async {
-    if (kIsWeb) {
-      await _initWebNotifications();
-    } else {
-      await _initMobileNotifications();
-    }
-  }
-
-  Future<void> _initWebNotifications() async {
-    try {
-      NotificationSettings settings =
-          await _firebaseMessaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        String? token = await _firebaseMessaging.getToken();
-        print('FCM Web Token: $token');
-
-        await _firebaseMessaging.subscribeToTopic('need_help');
-
-        // Handle foreground messages
-        FirebaseMessaging.onMessage.listen((message) {
-          print(
-              'Received web foreground message: ${message.notification?.title}');
-          // Implement web notification display logic here
-        });
-
-        // Handle background messages
-        FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
-      }
-    } catch (e) {
-      print('Error initializing web notifications: $e');
-    }
+    await _initMobileNotifications();
   }
 
   Future<void> _initMobileNotifications() async {

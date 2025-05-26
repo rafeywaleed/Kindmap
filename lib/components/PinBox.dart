@@ -6,8 +6,6 @@ import 'package:kindmap/themes/kmTheme.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:kindmap/Services/web_utils_stub.dart';
 
 class PinBox extends StatefulWidget {
   final String timeleft;
@@ -54,7 +52,6 @@ class _PinBoxState extends State<PinBox> {
       ).round();
     } catch (e) {
       print('Error calculating distance: $e');
-      // Fallback distance if calculation fails
       distance = 0;
     }
   }
@@ -64,21 +61,16 @@ class _PinBoxState extends State<PinBox> {
         'https://www.google.com/maps/dir/?api=1&destination=${widget.latitude},${widget.longitude}';
 
     try {
-      if (kIsWeb) {
-        await getWebUtils().openUrl(url);
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
       } else {
-        final uri = Uri.parse(url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
-        } else {
-          throw 'Could not launch navigation';
-        }
+        throw 'Could not launch navigation';
       }
     } catch (e) {
-      // Show error in UI
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Navigation failed: $e')),
       );
