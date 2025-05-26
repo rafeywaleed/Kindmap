@@ -257,9 +257,7 @@ class _DetailBoxState extends State<DetailBox> {
                 child: ElevatedButton(
                   onPressed: () async {
                     Navigator.pop(context);
-                    Navigator.pop(context);
-                    Navigator.pop(context);
-                    // Navigator.pop(context);
+                    Navigator.popAndPushNamed(context, '/HomePage');
                   },
                   style: ElevatedButton.styleFrom(
                     shape: RoundedRectangleBorder(

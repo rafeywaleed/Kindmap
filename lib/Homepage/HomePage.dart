@@ -717,10 +717,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               highlightColor:
                                                   Colors.transparent,
                                               onTap: () async {
-                                                // Provider.of<ThemeProvider>(
-                                                //         context,
-                                                //         listen: false)
-                                                //     .toggleTheme();
+                                                Provider.of<ThemeProvider>(
+                                                        context,
+                                                        listen: false)
+                                                    .toggleTheme();
                                               },
                                               child: Icon(
                                                 Icons.nights_stay,
@@ -746,10 +746,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                               highlightColor:
                                                   Colors.transparent,
                                               onTap: () async {
-                                                // Provider.of<ThemeProvider>(
-                                                //         context,
-                                                //         listen: false)
-                                                //     .toggleTheme();
+                                                Provider.of<ThemeProvider>(
+                                                        context,
+                                                        listen: false)
+                                                    .toggleTheme();
                                               },
                                               child: Icon(
                                                 Icons.wb_sunny_rounded,
@@ -782,6 +782,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
           ),
           appBar: AppBar(
+            scrolledUnderElevation: 0,
             backgroundColor: KMTheme.of(context).secondaryBackground,
             iconTheme: IconThemeData(color: KMTheme.of(context).primaryText),
             automaticallyImplyLeading: true,

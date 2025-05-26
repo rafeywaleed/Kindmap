@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'Services/map_services.dart';
 import 'components/PinBox.dart';
@@ -18,54 +19,157 @@ class Maps extends StatefulWidget {
 
 class _MapsState extends State<Maps> {
   late Stream<Position> positionStream;
-  LatLng? location;
+  LatLng? _currentLocation;
+  LatLng? _lastKnownLocation;
+  bool _locationServiceEnabled = true;
+  final MapController _mapController = MapController();
+  bool _isUsingCurrentLocation = true;
+
   @override
   void initState() {
     super.initState();
-    getLocation();
+    _initLocation();
+  }
+
+  Future<void> _initLocation() async {
+    await _checkLocationService();
+    await _loadLastKnownLocation();
+    await _setupLocationStream();
     loadMarkers();
   }
 
-  Future<void> getLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  Future<void> _checkLocationService() async {
+    _locationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!_locationServiceEnabled) {
+      _showLocationServiceDialog();
+    }
+  }
 
-    // Check if location service is enabled
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Location services are disabled.');
+  Future<void> _loadLastKnownLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastLat = prefs.getDouble('last_latitude');
+    final lastLng = prefs.getDouble('last_longitude');
+
+    if (lastLat != null && lastLng != null) {
+      _lastKnownLocation = LatLng(lastLat, lastLng);
+      final mapProvider = Provider.of<MapProvider>(context, listen: false);
+      mapProvider.setLocation(_lastKnownLocation!);
+      _mapController.move(_lastKnownLocation!, 17);
+      _isUsingCurrentLocation = false;
+    }
+  }
+
+  Future<void> _saveLocation(LatLng location) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('last_latitude', location.latitude);
+    await prefs.setDouble('last_longitude', location.longitude);
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+        'last_location': GeoPoint(location.latitude, location.longitude),
+        'last_updated': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  void _showLocationServiceDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.location_off, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Location Required'),
+          ],
+        ),
+        content: const Text(
+          'Please enable location services to show your position on the map.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.settings),
+            label: const Text('Enable'),
+            onPressed: () async {
+              Navigator.pop(context);
+              await Geolocator.openLocationSettings();
+              await _initLocation();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _moveToCurrentLocation() async {
+    if (!_locationServiceEnabled) {
+      _showLocationServiceDialog();
+      return;
     }
 
-    // Request permission
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied');
-      }
+    if (_currentLocation != null) {
+      _mapController.move(_currentLocation!, 17);
+      setState(() => _isUsingCurrentLocation = true);
+      return;
     }
 
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error(
-          'Location permissions are permanently denied, we cannot request permissions.');
+    try {
+      final position = await Geolocator.getLastKnownPosition() ??
+          await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+
+      _currentLocation = LatLng(position.latitude, position.longitude);
+      final mapProvider = Provider.of<MapProvider>(context, listen: false);
+      mapProvider.setLocation(_currentLocation!);
+      _mapController.move(_currentLocation!, 17);
+      setState(() => _isUsingCurrentLocation = true);
+
+      await _saveLocation(_currentLocation!);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error getting location: $e')),
+      );
     }
+  }
 
-    // Get initial position
-    final Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    final mapProvider = Provider.of<MapProvider>(context, listen: false);
-    mapProvider.setLocation(LatLng(position.latitude, position.longitude));
+  Future<void> _setupLocationStream() async {
+    if (!_locationServiceEnabled) return;
 
-    // Listen for location updates
-    positionStream = Geolocator.getPositionStream(
+    try {
+      final position = await Geolocator.getLastKnownPosition() ??
+          await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+
+      _currentLocation = LatLng(position.latitude, position.longitude);
+      final mapProvider = Provider.of<MapProvider>(context, listen: false);
+      mapProvider.setLocation(_currentLocation!);
+      _mapController.move(_currentLocation!, 17);
+      await _saveLocation(_currentLocation!);
+
+      positionStream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      distanceFilter: 10, // Update only when user moves 10 meters
-    ));
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+        ),
+      );
 
-    positionStream.listen((Position position) {
-      mapProvider.setLocation(LatLng(position.latitude, position.longitude));
-    });
+      positionStream.listen((Position position) {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+        mapProvider.setLocation(_currentLocation!);
+        _saveLocation(_currentLocation!);
+      });
+    } catch (e) {
+      print('Error setting up location stream: $e');
+    }
   }
 
   Future<void> loadMarkers() async {
@@ -137,34 +241,62 @@ class _MapsState extends State<Maps> {
         children: [
           if (mapProvider.location != null)
             FlutterMap(
+              mapController: _mapController,
               options: MapOptions(
                 minZoom: 0,
                 maxZoom: 18,
-                initialCenter: location ?? LatLng(0, 0), // Fallback to (0, 0)
+                initialCenter: mapProvider.location!,
                 initialZoom: 17,
                 interactionOptions: InteractionOptions(
-                  flags: InteractiveFlag.none,
+                  flags: InteractiveFlag.all,
                 ),
               ),
               children: [
                 openStreetMapTileLayer,
-                if (location != null)
-                  MarkerLayer(
-                    markers: [
+                MarkerLayer(
+                  markers: [
+                    if ((_isUsingCurrentLocation && _currentLocation != null) ||
+                        (!_isUsingCurrentLocation &&
+                            _lastKnownLocation != null))
                       Marker(
-                          point: location!,
-                          width: 30,
-                          height: 30,
-                          // Removed rotateAlignment as it is not a valid parameter
-                          child: Image.asset(
-                            'assets/images/MapMarker.png', // Replace with your image path
-                            width: 50,
-                            height: 50,
-                          )),
-                    ],
-                  ),
+                        point: _isUsingCurrentLocation
+                            ? _currentLocation!
+                            : _lastKnownLocation!,
+                        width: 40,
+                        height: 40,
+                        child: Icon(
+                          Icons.my_location,
+                          color: _isUsingCurrentLocation
+                              ? Colors.blue
+                              : Color(0xFF424242),
+                          size: 40,
+                        ),
+                      ),
+                    ...mapProvider.markers,
+                  ],
+                ),
               ],
             ),
+          if (mapProvider.location == null)
+            const Center(child: CircularProgressIndicator.adaptive()),
+          Positioned(
+            bottom: 100,
+            right: 16,
+            child: FloatingActionButton.small(
+              heroTag: 'my_location_fab',
+              onPressed: _moveToCurrentLocation,
+              backgroundColor: Colors.white,
+              elevation: 4,
+              tooltip: _isUsingCurrentLocation
+                  ? 'You are viewing your live location'
+                  : 'You are viewing your last saved location',
+              child: Icon(
+                Icons.my_location,
+                color:
+                    _isUsingCurrentLocation ? Colors.blue : Color(0xFF424242),
+              ),
+            ),
+          ),
         ],
       ),
     );

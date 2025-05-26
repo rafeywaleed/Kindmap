@@ -1,13 +1,25 @@
 // ignore_for_file: non_constant_identifier_names, avoid_print
 
 import 'dart:convert';
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
+
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:kindmap/main.dart';
+
+import 'firebase_options.dart';
 
 Future<void> handleBackgroundMessage(RemoteMessage? message) async {
+  // Required: ensure Firebase is initialized in background isolate
+  if (Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+
   if (message == null) return;
+
+  print('🔔 Background message received: ${message.notification?.title}');
+  // Optional: handle routing here if needed
   // navigatorKey.currentState?.pushNamed('/map');
 }
 

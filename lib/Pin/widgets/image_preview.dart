@@ -1,14 +1,13 @@
-import 'dart:io';
-
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:kindmap/themes/kmTheme.dart';
 
 class ImagePreview extends StatelessWidget {
-  final String imagePath;
+  final Uint8List imageBytes;
 
   const ImagePreview({
     Key? key,
-    required this.imagePath,
+    required this.imageBytes,
   }) : super(key: key);
 
   @override
@@ -20,8 +19,8 @@ class ImagePreview extends StatelessWidget {
         color: KMTheme.of(context).secondaryBackground,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Image.file(
-        File(imagePath),
+      child: Image.memory(
+        imageBytes,
         fit: BoxFit.cover,
       ),
     );

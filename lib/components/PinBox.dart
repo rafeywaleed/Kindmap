@@ -6,13 +6,14 @@ import 'package:kindmap/themes/kmTheme.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:typed_data';
 
 class PinBox extends StatefulWidget {
   final String timeleft;
   final double latitude;
   final double longitude;
   final String note;
-  final String image;
+  final dynamic image; // <-- Accept dynamic for backward compatibility (String or Uint8List)
   final String detail;
   final VoidCallback onServe;
   final LatLng location;
@@ -123,21 +124,55 @@ class _PinBoxState extends State<PinBox> {
   Widget _buildImagePreview() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
-      child: CachedNetworkImage(
-        imageUrl: widget.image,
-        fit: BoxFit.cover,
-        width: MediaQuery.of(context).size.width * 0.4,
-        height: MediaQuery.of(context).size.width * 0.4,
-        placeholder: (context, url) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        errorWidget: (context, url, error) => Container(
-          color: KMTheme.of(context).alternate,
-          child: Icon(
-            Icons.error,
-            color: KMTheme.of(context).error,
-          ),
-        ),
+      child: Builder(
+        builder: (context) {
+          if (widget.image is Uint8List) {
+            // New: image is bytes
+            return Image.memory(
+              widget.image as Uint8List,
+              fit: BoxFit.cover,
+              width: MediaQuery.of(context).size.width * 0.4,
+              height: MediaQuery.of(context).size.width * 0.4,
+              errorBuilder: (context, error, stackTrace) => Container(
+                color: KMTheme.of(context).alternate,
+                child: Icon(
+                  Icons.error,
+                  color: KMTheme.of(context).error,
+                ),
+              ),
+            );
+          } else if (widget.image is String && (widget.image as String).isNotEmpty) {
+            // Fallback: image is a URL
+            return Image.network(
+              widget.image as String,
+              fit: BoxFit.cover,
+              width: MediaQuery.of(context).size.width * 0.4,
+              height: MediaQuery.of(context).size.width * 0.4,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return const Center(child: CircularProgressIndicator());
+              },
+              errorBuilder: (context, error, stackTrace) => Container(
+                color: KMTheme.of(context).alternate,
+                child: Icon(
+                  Icons.error,
+                  color: KMTheme.of(context).error,
+                ),
+              ),
+            );
+          } else {
+            // No image
+            return Container(
+              width: MediaQuery.of(context).size.width * 0.4,
+              height: MediaQuery.of(context).size.width * 0.4,
+              color: KMTheme.of(context).alternate,
+              child: Icon(
+                Icons.image_not_supported,
+                color: KMTheme.of(context).error,
+              ),
+            );
+          }
+        },
       ),
     );
   }

@@ -35,15 +35,21 @@ final navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: 'AIzaSyBBIuwNrITwg_fmeIkMGz2CZbkoNVKvP4g',
-      appId: '1:403643543889:android:d9f0b2bf35c12e2d3ae370',
-      messagingSenderId: '403643543889',
-      projectId: 'kindmap-999d3',
-      storageBucket: 'gs://kindmap-999d3.appspot.com',
-    ),
-  );
+  try {
+    Firebase.app(); // Throws if not initialized
+  } on FirebaseException catch (_) {
+    await Firebase.initializeApp(
+      name: "kindmap-999d3",
+      options: const FirebaseOptions(
+        apiKey: 'AIzaSyBBIuwNrITwg_fmeIkMGz2CZbkoNVKvP4g',
+        appId: '1:403643543889:android:d9f0b2bf35c12e2d3ae370',
+        messagingSenderId: '403643543889',
+        projectId: 'kindmap-999d3',
+        storageBucket: 'gs://kindmap-999d3.appspot.com',
+      ),
+    );
+  }
+
   await FCM().initNotifications();
 
   runApp(

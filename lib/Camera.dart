@@ -147,17 +147,43 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
 
   Widget _buildCameraOverlay() {
     return SafeArea(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildTorchButton(),
-                _buildCaptureButton(),
-              ],
+          // Torch button top left
+          Positioned(
+            top: 24,
+            left: 24,
+            child: _buildTorchButton(),
+          ),
+          // Capture button bottom center
+          Positioned(
+            bottom: 32,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: GestureDetector(
+                onTap: _handleImageCapture,
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.85),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.camera_alt,
+                    color: KMTheme.of(context).primaryText,
+                    size: 40,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -178,17 +204,6 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildCaptureButton() {
-    return IconButton(
-      onPressed: _handleImageCapture,
-      icon: Icon(
-        Icons.camera,
-        color: KMTheme.of(context).primaryText,
-        size: 60,
-      ),
     );
   }
 
