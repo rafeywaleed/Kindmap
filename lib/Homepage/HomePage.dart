@@ -852,7 +852,7 @@ Widget PinSomeone(Size size, BuildContext context) {
       child: Container(
         height: size.height * 0.08,
         decoration: BoxDecoration(
-          color: Color.fromARGB(255, 32, 32, 32),
+          color: KMTheme.of(context).secondary,
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(

@@ -1,0 +1,2 @@
+D:/kindmap/android/app/.cxx/RelWithDebInfo/6e5iz3b3/armeabi-v7a/CMakeFiles/edit_cache.dir
+D:/kindmap/android/app/.cxx/RelWithDebInfo/6e5iz3b3/armeabi-v7a/CMakeFiles/rebuild_cache.dir
