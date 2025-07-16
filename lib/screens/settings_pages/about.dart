@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:kindmap/themes/KMTheme.dart";
+import "package:kindmap/config/app_theme.dart";
 
 class About extends StatefulWidget {
   const About({super.key});

@@ -1,5 +1,5 @@
 import "package:flutter/material.dart";
-import "package:kindmap/themes/KMTheme.dart";
+import "package:kindmap/config/app_theme.dart";
 
 class Contact extends StatefulWidget {
   const Contact({super.key});

@@ -1,6 +1,6 @@
 import "package:flutter/material.dart";
 import "package:flutter_animate/flutter_animate.dart";
-import "package:kindmap/themes/KMTheme.dart";
+import "package:kindmap/config/app_theme.dart";
 
 class Help extends StatefulWidget {
   const Help({super.key});

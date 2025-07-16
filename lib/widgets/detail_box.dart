@@ -3,12 +3,13 @@ import 'dart:core';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:kindmap/themes/kmTheme.dart';
+import 'package:kindmap/config/app_theme.dart';
+// import 'package:kindmap/themes/kmTheme.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'Model_DetailBox.dart';
-export 'Model_DetailBox.dart';
+// import 'Model_DetailBox.dart';
+// export 'Model_DetailBox.dart';
 
 class DetailBox extends StatefulWidget {
   DetailBox({

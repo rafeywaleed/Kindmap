@@ -3,13 +3,18 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:http/http.dart' as http;
+import 'package:googleapis_auth/auth_io.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kindmap/screens/auth_pages.dart/auth_screen.dart';
+import 'package:kindmap/screens/pin_confirmation.dart';
 
 import 'package:latlong2/latlong.dart';
 
@@ -281,6 +286,32 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     } catch (e) {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> sendNotification(String topic) async {
+    final fburl = Uri.parse(
+        'https://fcm.googleapis.com/v1/projects/kindmap-999d3/messages:send');
+    final accessToken = await getAccessToken();
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $accessToken',
+    };
+    final body = {
+      'notification': {
+        'title': 'KindMap',
+        'body': 'Someone nearby needs help.',
+      },
+      'priority': 'high',
+      'topic': '/topics/$topic',
+    };
+    final response = await http.post(
+      fburl,
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      print('Notification sent successfully to topic: $topic');
     }
   }
 

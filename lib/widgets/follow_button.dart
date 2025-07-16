@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:kindmap/components/BoxHandle.dart';
-import 'package:kindmap/components/SocialTile.dart';
-import 'package:kindmap/themes/KMTheme.dart';
+import 'package:kindmap/config/app_theme.dart';
+import 'package:kindmap/widgets/box_handle.dart';
+import 'package:kindmap/widgets/social_tile.dart';
 
 class FollowBox extends StatefulWidget {
   final String s_media;
