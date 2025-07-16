@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kindmap/config/routes.dart';
+import 'package:kindmap/screens/homescreen.dart';
 
 import 'config/app_theme.dart';
 
@@ -18,6 +19,7 @@ class MyApp extends StatelessWidget {
       theme: LightModeTheme().toThemeData(),
       darkTheme: DarkModeTheme().toThemeData(),
       themeMode: ThemeMode.system,
+      home: HomePage(),
       routes: appRoutes,
     );
   }
