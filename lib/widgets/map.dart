@@ -1,16 +1,17 @@
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:kindmap/services/map_services.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/latlong.dart';
-
+import '../services/map_services.dart';
+import 'pin_box.dart';
 
 class Maps extends StatefulWidget {
-  bool isInteractive;
-  Maps({this.isInteractive=false,super.key});
+  const Maps({Key? key}) : super(key: key);
 
   @override
   State<Maps> createState() => _MapsState();
@@ -18,24 +19,23 @@ class Maps extends StatefulWidget {
 
 class _MapsState extends State<Maps> {
   late Stream<Position> positionStream;
-  LatLong? _currentLocation;
-  LatLong? _lastKnownLocation;
+  LatLng? _currentLocation;
+  LatLng? _lastKnownLocation;
   bool _locationServiceEnabled = true;
   final MapController _mapController = MapController();
   bool _isUsingCurrentLocation = true;
-  late final MapProvider mapProvider;
-  
 
   @override
   void initState() {
     super.initState();
     _initLocation();
-    setState(() {
-      mapProvider = Provider.of<MapProvider>(context, listen: false);
-    });
   }
 
   Future<void> _initLocation() async {
+    await _checkLocationService();
+    await _loadLastKnownLocation();
+    await _setupLocationStream();
+    loadMarkers();
   }
 
   Future<void> _checkLocationService() async {
@@ -46,11 +46,34 @@ class _MapsState extends State<Maps> {
   }
 
   Future<void> _loadLastKnownLocation() async {
-    
+    final prefs = await SharedPreferences.getInstance();
+    final lastLat = prefs.getDouble('last_latitude');
+    final lastLng = prefs.getDouble('last_longitude');
+
+    if (lastLat != null && lastLng != null) {
+      _lastKnownLocation = LatLng(lastLat, lastLng);
+      final mapProvider = Provider.of<MapProvider>(context, listen: false);
+      mapProvider.setLocation(_lastKnownLocation!);
+      _mapController.move(_lastKnownLocation!, 17);
+      _isUsingCurrentLocation = false;
+    }
   }
 
-  Future<void> _saveLocation(LatLong location) async {
-  
+  Future<void> _saveLocation(LatLng location) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('last_latitude', location.latitude);
+    await prefs.setDouble('last_longitude', location.longitude);
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .update({
+        'last_location': GeoPoint(location.latitude, location.longitude),
+        'last_updated': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
   void _showLocationServiceDialog() {
@@ -86,96 +109,133 @@ class _MapsState extends State<Maps> {
       ),
     );
   }
-  
-  // Future<void> _moveToCurrentLocation() async {
-  //   if (!locationServiceEnabled) {
-  //     _showLocationServiceDialog();
-  //     return;
-  //   }
-  //   if (_currentLocation != null) {
-  //     _mapController.move(_currentLocation!, 17);
-  //     setState(() => _isUsingCurrentLocation = true);
-  //     return;
-  //   }
-  //   try {
-  //     final position = await Geolocator.getLastKnownPosition() ??
-  //         await Geolocator.getCurrentPosition(
-  //             desiredAccuracy: LocationAccuracy.high);
-  //     _currentLocation = LatLong(position.latitude, position.longitude);
-  //     final mapProvider = Provider.of<MapProvider>(context, listen: false);
-  //     mapProvider.setLocation(_currentLocation!);
-  //     _mapController.move(_currentLocation!, 17);
-  //     setState(() => _isUsingCurrentLocation = true);
-  //     await _saveLocation(_currentLocation!);
-  //   } catch (e) {
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text('Error getting location: $e')),
-  //     );
-  //   }
-  // }
- 
-  // Future<void> loadMarkers() async {
-  //   final pins = await FirebaseFirestore.instance.collection('Pins').get();
-  //   final mapProvider = Provider.of<MapProvider>(context, listen: false);
-  //   final markers = pins.docs.map((doc) {
-  //     final latitude = doc['Latitude'];
-  //     final longitude = doc['Longitude'];
-  //     return Marker(
-  //       point: LatLong(latitude, longitude),
-  //       child: GestureDetector(
-  //         onTap: () {
-  //           showModalBottomSheet(
-  //             isScrollControlled: true,
-  //             context: context,
-  //             builder: (BuildContext context) {
-  //               return PinBox(
-  //                 note: doc['Note'],
-  //                 detail: doc['Details'],
-  //                 image: doc['url'],
-  //                 timeleft: doc['Timer'],
-  //                 latitude: doc['Latitude'],
-  //                 longitude: doc['Longitude'],
-  //                 location: mapProvider.location ?? LatLong(0, 0),
-  //                 onServe: () async {
-  //                   final updatedMarkers = mapProvider.markers
-  //                       .where((marker) =>
-  //                           marker.point != LatLong(latitude, longitude))
-  //                       .toList();
-  //                   mapProvider.setMarkers(updatedMarkers);
-  //                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-  //                       content: Text('Thank You for helping!')));
-  //                   FirebaseFirestore.instance
-  //                       .collection('Pins')
-  //                       .doc(doc.id)
-  //                       .delete();
-  //                   var helped = await FirebaseFirestore.instance
-  //                       .collection('users')
-  //                       .doc(FirebaseAuth.instance.currentUser?.uid)
-  //                       .get();
-  //                   FirebaseFirestore.instance
-  //                       .collection('users')
-  //                       .doc(FirebaseAuth.instance.currentUser?.uid)
-  //                       .update({'helped': helped.data()!['helped'] + 1});
-  //                   Navigator.pop(context);
-  //                 },
-  //               );
-  //             },
-  //           );
-  //         },
-  //         child: Image.asset(
-  //           'assets/images/MapMarker.png',
-  //           width: 50,
-  //           height: 50,
-  //         ),
-  //       ),
-  //     );
-  //   }).toList();
-  //   mapProvider.setMarkers(markers)();
-  // }
+
+  Future<void> _moveToCurrentLocation() async {
+    if (!_locationServiceEnabled) {
+      _showLocationServiceDialog();
+      return;
+    }
+
+    if (_currentLocation != null) {
+      _mapController.move(_currentLocation!, 17);
+      setState(() => _isUsingCurrentLocation = true);
+      return;
+    }
+
+    try {
+      final position = await Geolocator.getLastKnownPosition() ??
+          await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+
+      _currentLocation = LatLng(position.latitude, position.longitude);
+      final mapProvider = Provider.of<MapProvider>(context, listen: false);
+      mapProvider.setLocation(_currentLocation!);
+      _mapController.move(_currentLocation!, 17);
+      setState(() => _isUsingCurrentLocation = true);
+
+      await _saveLocation(_currentLocation!);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error getting location: $e')),
+      );
+    }
+  }
+
+  Future<void> _setupLocationStream() async {
+    if (!_locationServiceEnabled) return;
+
+    try {
+      final position = await Geolocator.getLastKnownPosition() ??
+          await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+
+      _currentLocation = LatLng(position.latitude, position.longitude);
+      final mapProvider = Provider.of<MapProvider>(context, listen: false);
+      mapProvider.setLocation(_currentLocation!);
+      _mapController.move(_currentLocation!, 17);
+      await _saveLocation(_currentLocation!);
+
+      positionStream = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+        ),
+      );
+
+      positionStream.listen((Position position) {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+        mapProvider.setLocation(_currentLocation!);
+        _saveLocation(_currentLocation!);
+      });
+    } catch (e) {
+      print('Error setting up location stream: $e');
+    }
+  }
+
+  Future<void> loadMarkers() async {
+    final pins = await FirebaseFirestore.instance.collection('Pins').get();
+    final mapProvider = Provider.of<MapProvider>(context, listen: false);
+    final markers = pins.docs.map((doc) {
+      final latitude = doc['Latitude'];
+      final longitude = doc['Longitude'];
+      return Marker(
+        point: LatLng(latitude, longitude),
+        child: GestureDetector(
+          onTap: () {
+            showModalBottomSheet(
+              isScrollControlled: true,
+              context: context,
+              builder: (BuildContext context) {
+                return PinBox(
+                  note: doc['Note'],
+                  detail: doc['Details'],
+                  image: doc['url'],
+                  timeleft: doc['Timer'],
+                  latitude: doc['Latitude'],
+                  longitude: doc['Longitude'],
+                  location: mapProvider.location ?? LatLng(0, 0),
+                  onServe: () async {
+                    final updatedMarkers = mapProvider.markers
+                        .where((marker) =>
+                            marker.point != LatLng(latitude, longitude))
+                        .toList();
+                    mapProvider.setMarkers(updatedMarkers);
+
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Thank You for helping!')));
+                    FirebaseFirestore.instance
+                        .collection('Pins')
+                        .doc(doc.id)
+                        .delete();
+                    var helped = await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(FirebaseAuth.instance.currentUser?.uid)
+                        .get();
+                    FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(FirebaseAuth.instance.currentUser?.uid)
+                        .update({'helped': helped.data()!['helped'] + 1});
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            );
+          },
+          child: Image.asset(
+            'assets/images/MapMarker.png',
+            width: 50,
+            height: 50,
+          ),
+        ),
+      );
+    }).toList();
+    mapProvider.setMarkers(markers);
+  }
 
   @override
   Widget build(BuildContext context) {
-    
+    final mapProvider = Provider.of<MapProvider>(context);
+
     return Scaffold(
       body: Stack(
         children: [
@@ -193,8 +253,30 @@ class _MapsState extends State<Maps> {
               ),
               children: [
                 openStreetMapTileLayer,
-               
-            
+                MarkerLayer(
+                  markers: [
+                    if ((_isUsingCurrentLocation && _currentLocation != null) ||
+                        (!_isUsingCurrentLocation &&
+                            _lastKnownLocation != null))
+                      Marker(
+                        point: _isUsingCurrentLocation
+                            ? _currentLocation!
+                            : _lastKnownLocation!,
+                        width: 40,
+                        height: 40,
+                        child: Icon(
+                          Icons.my_location,
+                          color: _isUsingCurrentLocation
+                              ? Colors.blue
+                              : Color(0xFF424242),
+                          size: 40,
+                        ),
+                      ),
+                    ...mapProvider.markers,
+                  ],
+                ),
+              ],
+            ),
           if (mapProvider.location == null)
             const Center(child: CircularProgressIndicator.adaptive()),
           Positioned(
@@ -202,29 +284,26 @@ class _MapsState extends State<Maps> {
             right: 16,
             child: FloatingActionButton.small(
               heroTag: 'my_location_fab',
-              onPressed: () {
-                
-              },
+              onPressed: _moveToCurrentLocation,
               backgroundColor: Colors.white,
               elevation: 4,
-              // tooltip: _isUsingCurrentLocation
-              //     ? 'You are viewing your live location'
-              //     : 'You are viewing your last saved location',
+              tooltip: _isUsingCurrentLocation
+                  ? 'You are viewing your live location'
+                  : 'You are viewing your last saved location',
               child: Icon(
                 Icons.my_location,
-               
+                color:
+                    _isUsingCurrentLocation ? Colors.blue : Color(0xFF424242),
               ),
             ),
           ),
-        ]
-        )
         ],
       ),
     );
   }
+}
 
 TileLayer get openStreetMapTileLayer => TileLayer(
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       userAgentPackageName: 'dev.fleaflet.flutter_map.example',
     );
-}
