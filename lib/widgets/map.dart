@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/map_services.dart';
 import 'pin_box.dart';
+import '../screens/pin_page.dart'; // Make sure getCellInfo is accessible
 
 class Maps extends StatefulWidget {
   const Maps({Key? key}) : super(key: key);
@@ -29,6 +32,7 @@ class _MapsState extends State<Maps> {
   void initState() {
     super.initState();
     _initLocation();
+    loadMarkers();
   }
 
   Future<void> _initLocation() async {
@@ -54,7 +58,9 @@ class _MapsState extends State<Maps> {
       _lastKnownLocation = LatLng(lastLat, lastLng);
       final mapProvider = Provider.of<MapProvider>(context, listen: false);
       mapProvider.setLocation(_lastKnownLocation!);
-      _mapController.move(_lastKnownLocation!, 17);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.move(_lastKnownLocation!, 17);
+      });
       _isUsingCurrentLocation = false;
     }
   }
@@ -173,63 +179,72 @@ class _MapsState extends State<Maps> {
   }
 
   Future<void> loadMarkers() async {
-    final pins = await FirebaseFirestore.instance.collection('Pins').get();
     final mapProvider = Provider.of<MapProvider>(context, listen: false);
-    final markers = pins.docs.map((doc) {
-      final latitude = doc['Latitude'];
-      final longitude = doc['Longitude'];
-      return Marker(
-        point: LatLng(latitude, longitude),
-        child: GestureDetector(
-          onTap: () {
-            showModalBottomSheet(
-              isScrollControlled: true,
-              context: context,
-              builder: (BuildContext context) {
-                return PinBox(
-                  note: doc['Note'],
-                  detail: doc['Details'],
-                  image: doc['url'],
-                  timeleft: doc['Timer'],
-                  latitude: doc['Latitude'],
-                  longitude: doc['Longitude'],
-                  location: mapProvider.location ?? LatLng(0, 0),
-                  onServe: () async {
-                    final updatedMarkers = mapProvider.markers
-                        .where((marker) =>
-                            marker.point != LatLng(latitude, longitude))
-                        .toList();
-                    mapProvider.setMarkers(updatedMarkers);
+    List<Marker> allMarkers = [];
 
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Thank You for helping!')));
-                    FirebaseFirestore.instance
-                        .collection('Pins')
-                        .doc(doc.id)
-                        .delete();
-                    var helped = await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(FirebaseAuth.instance.currentUser?.uid)
-                        .get();
-                    FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(FirebaseAuth.instance.currentUser?.uid)
-                        .update({'helped': helped.data()!['helped'] + 1});
-                    Navigator.pop(context);
-                  },
-                );
-              },
-            );
-          },
-          child: Image.asset(
-            'assets/images/MapMarker.png',
-            width: 50,
-            height: 50,
+    // Use current location to get cellId
+    final LatLng? loc = mapProvider.location ?? _currentLocation;
+    if (loc == null) return;
+
+    final cellInfo = getCellInfo(loc.latitude, loc.longitude);
+    final cellId = cellInfo['cellId'];
+
+    log("The Cell Id for current location is $cellId");
+
+    // Fetch only the markers in the current cell
+    final markersSnapshot = await FirebaseFirestore.instance
+        .collection('pins')
+        .doc(cellId)
+        .collection('markers')
+        .get();
+
+    for (var markerDoc in markersSnapshot.docs) {
+      final data = markerDoc.data();
+      final latitude = data['latitude'];
+      final longitude = data['longitude'];
+      allMarkers.add(
+        Marker(
+          point: LatLng(latitude, longitude),
+          child: GestureDetector(
+            onTap: () {
+              showModalBottomSheet(
+                isScrollControlled: true,
+                context: context,
+                builder: (BuildContext context) {
+                  return PinBox(
+                    note: data['note'],
+                    detail: data['details'],
+                    image: data['imageBase64'],
+                    timeleft: data['timer'],
+                    latitude: latitude,
+                    longitude: longitude,
+                    location: mapProvider.location ?? LatLng(0, 0),
+                    onServe: () async {
+                      final updatedMarkers = mapProvider.markers
+                          .where((marker) =>
+                              marker.point != LatLng(latitude, longitude))
+                          .toList();
+                      mapProvider.setMarkers(updatedMarkers);
+
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Thank You for helping!')));
+                      await markerDoc.reference.delete();
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              );
+            },
+            child: Image.asset(
+              'assets/images/MapMarker.png',
+              width: 50,
+              height: 50,
+            ),
           ),
         ),
       );
-    }).toList();
-    mapProvider.setMarkers(markers);
+    }
+    mapProvider.setMarkers(allMarkers);
   }
 
   @override
