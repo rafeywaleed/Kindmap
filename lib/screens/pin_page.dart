@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -361,12 +362,10 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     final serviceAccountCredentials = ServiceAccountCredentials.fromJson({
       "type": "service_account",
       "project_id": "kindmap-999d3",
-      "private_key_id": "b8c22307bcd68f3eb7f38f0139869d8563e795e7",
-      "private_key":
-          "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCa1oHQJ/27x5sR\nU2G1HoUGv7mFErkBqJ8CvHHbOMiko+ydm/iW8e94nXuaiEvHq9jysovkhgGdAPUn\nZ/Qh7CJi4FTV7jTFMG5bg4KZ1z7hOLCBzCiK5nruiG393Pqf5ekDIxrVPgvHP9fX\nIrB2ZZQ0aou5LeDXX2m0dLldbqDctf5rDll2e95VzywHPOGHFStl7tw3ys7TEoWN\nwQt/9AhDmkpm3J7FUltI9YwqxExE7YTovt1BOcXzP0OKuwrJm6y0usAAleWtlSbf\nnfyjPo/uTIHj/IP5BrYP8NOQIx29S7yqdB02H0RaduX6THSX+ZHf5Zla7lSLoLiK\nNJsAWZhlAgMBAAECggEABCSQJZskUVVmY0DJYPi3k3YmxxY4qAA0fPTA0R5EVA9k\nwdTOAm/nueDw0TIrYOTKsbewQYWKXoKLjKnd4Nh6FQ4uhujQNaR1l3I92NLnBkyn\ngFmPjiPbjy1MUBoNBKE4qlJSofj+hK7DHij58rkGDZ76LRK6rNiLMf5bhVHz8OPN\nBFWElwPAr1i3tVRdeSO7jU5YmB6h+SG6kbjJyxglKj246hjFGY2e2q/vb6EkXL2n\njlRfYobSZT1B79drjbiJJFGFe2fEMKKaxgku7aXV54X1YPMUbq7nDqMwcmUyfs2T\nkAp6uYfH7j7UWVSR4f6XQ4VPHtmtWwPIfW4m8Ai+MQKBgQDVbe8qHY9iNnwplTfT\neK/OB3caAEZWUigNaMxlDlKhOhxYy/g1SKJgqjF6B9ZefUL0bael5ZuULamInLll\nlnCpuqXxhBVK8EmNqBNaJAUMYwmC+fVDg7qJzzdxxWEuZfp6sQ0swPwPwr9p4m/T\nH0CjDT8qYL+oiIjEK5H6Jy9YrQKBgQC5uMqqalHr3bbceuol2j8DbmVgxWPmi1Mw\nwrkCb+M1MmL8N0wvVZoX64QuOxR47ddXU5wcuo6C73Z2Oabs72n0eMetk1BpoH3V\nazrICsGSh2myyrf+k52Hfjl6q+6NTma9B6Fe+TAhrr7qqP3QLh+aDqSWhK/YqHv1\npwcErkodmQKBgDW+fCY30V5i5/s0px0qW+LewGAcx5l/ELTnueiMpcQRtQerPTJ1\nuuXqlZDsHlAm7NBOOJQu8HFs2i8bgBgTvQUQii76Gr6HKY5xT4Y4YckPu1pvBRLe\nPf/r3UNZ97HOXje9E9s8MXzqhnbsXUplqUol0M0kFb8juoTjj9vVODf1AoGBAK67\ncFmzHA4YlAGN1xvz4NM+mzzXmaz/Ki63FU94q0CSflSjRhdGp2qX182TIijARJjR\nfg/9aTVBTKfgh+9lNL+gnuTss3wdViZj83Lfw80zf7uKRF/MzCn9FOEYP6FMwRZZ\nxnZPZfxapx6qDdo+etb7rdg7UCI8KhwtoEnEHNEJAoGBAKteMUOldHnZsRHQRnXK\nt0DD7VSRrsn2q+7Dp65JPvc15Wt3l4S/6vjfBE8A8KEbdPH65bS9nSPJ77+jtDcD\n8CbTFARxDMU6JajD5kg4aY5wseYtOBMEdpEsDCV26lscg9JhwEYk2FKnKljZIgiD\nCOp/wN4x9lXrPcEmxNxFQ8tx\n-----END PRIVATE KEY-----\n",
-      "client_email":
-          "firebase-adminsdk-ga6hv@kindmap-999d3.iam.gserviceaccount.com",
-      "client_id": "109937053761461466716",
+      "private_key_id": dotenv.env['private_key_id'],
+      "private_key": dotenv.env['private_key'],
+      "client_email": dotenv.env['client_email'],
+      "client_id": dotenv.env['client_id'],
       "auth_uri": "https://accounts.google.com/o/oauth2/auth",
       "token_uri": "https://oauth2.googleapis.com/token",
       "auth_provider_x509_cert_url":
@@ -389,7 +388,12 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     getLocation();
+    getDotnev();
     WidgetsBinding.instance?.addPostFrameCallback((_) => setState(() {}));
+  }
+
+  Future<void> getDotnev() async {
+    await dotenv.load(fileName: ".env");
   }
 
   @override
