@@ -24,7 +24,7 @@ class _CameraPageState extends State<CameraPage> {
     final cameras = await availableCameras();
     _controller = CameraController(
       cameras.first,
-      ResolutionPreset.medium,
+      ResolutionPreset.low,
       enableAudio: false,
     );
     _initializeControllerFuture = _controller.initialize();
@@ -78,7 +78,8 @@ class _CameraPageState extends State<CameraPage> {
             return Stack(
               alignment: Alignment.center,
               children: [
-                CameraPreview(_controller),
+                Container(
+                    height: 400, width: 400, child: CameraPreview(_controller)),
                 Positioned(
                   bottom: 80,
                   child: Row(

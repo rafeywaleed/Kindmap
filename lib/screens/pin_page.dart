@@ -2,11 +2,13 @@
 
 import 'dart:io';
 import 'dart:convert';
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:http/http.dart' as http;
 import 'package:googleapis_auth/auth_io.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -63,7 +65,6 @@ class CustomIconButton extends StatelessWidget {
   }
 }
 
-// Custom Button to replace FFButtonWidget
 class CustomButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String text;
@@ -187,6 +188,28 @@ class _AnimatedEntryContainerState extends State<AnimatedEntryContainer>
   }
 }
 
+Map<String, dynamic> getCellInfo(double lat, double long) {
+  const double kmPerLatDegree = 111.32;
+  const double cellSizeKm = 2.0;
+
+  final deltaLatDeg = cellSizeKm / kmPerLatDegree;
+  final row = (lat / deltaLatDeg).floor();
+
+  final swLat = row * deltaLatDeg;
+  final swLatRad = swLat * pi / 180;
+  final deltaLongDeg = cellSizeKm / (kmPerLatDegree * cos(swLatRad));
+  final col = (long / deltaLongDeg).floor();
+
+  return {
+    'row': row,
+    'col': col,
+    'cellId': '${row}_${col}',
+    'topic': 'grid_${row}_${col}',
+    'deltaLatDeg': deltaLatDeg,
+    'deltaLongDeg': deltaLongDeg,
+  };
+}
+
 class PinPage extends StatefulWidget {
   final String imagePath;
 
@@ -259,33 +282,44 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
   Future uploadImage() async {
     try {
-      final path =
-          'Images/${DateTime.now().millisecondsSinceEpoch}.${widget.imagePath.split('.').last}';
-      final fbs = FirebaseStorage.instance.ref().child(path);
+      final base64Image = await _compressAndConvertImage(widget.imagePath);
 
-      UploadTask uploadTask = fbs.putFile(File(widget.imagePath));
-      final snapshot = await uploadTask.whenComplete(() {});
-      var temp = await snapshot.ref.getDownloadURL().whenComplete(() {});
+      final cellInfo = getCellInfo(location!.latitude, location!.longitude);
+      final cellId = cellInfo['cellId'];
+      final topic = cellInfo['topic'];
+
+      final pinRef = FirebaseFirestore.instance
+          .collection('pins')
+          .doc(cellId)
+          .collection('markers')
+          .doc();
+
+      final pinData = {
+        'id': pinRef.id,
+        'latitude': location!.latitude,
+        'longitude': location!.longitude,
+        'note': textController1.text.isEmpty ? '(none)' : textController1.text,
+        'details':
+            textController2.text.isEmpty ? '(none)' : textController2.text,
+        'timer': dropDownValue ?? '3 hr',
+        'imageBase64': base64Image,
+        'createdAt': FieldValue.serverTimestamp(),
+        'grid': cellId,
+      };
+
+      await pinRef.set(pinData);
+
       setState(() {
-        url = temp;
-        docName =
-            '${location!.latitude}-${location!.longitude}-${TimeOfDay.now().hour}:${TimeOfDay.now().minute}';
-        db.collection('Pins').doc(docName).set({
-          'Note': textController1.text == "" ? '(none)' : textController1.text,
-          'Details':
-              textController2.text == "" ? '(none)' : textController2.text,
-          'Timer': dropDownValue ?? '3 hr',
-          'Latitude': location!.latitude,
-          'Longitude': location!.longitude,
-          'url': url!,
-          'UploadTime': DateTime.now()
-        });
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Upload Complete')));
+        docName = pinRef.id;
       });
+
+      await sendNotification(topic);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pin created successfully')));
     } catch (e) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+          .showSnackBar(SnackBar(content: Text('Error creating pin: $e')));
     }
   }
 
@@ -298,12 +332,18 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
       'Authorization': 'Bearer $accessToken',
     };
     final body = {
-      'notification': {
-        'title': 'KindMap',
-        'body': 'Someone nearby needs help.',
-      },
-      'priority': 'high',
-      'topic': '/topics/$topic',
+      'message': {
+        'topic': topic,
+        'notification': {
+          'title': 'New Help Request Nearby',
+          'body': 'Someone needs assistance in your area',
+        },
+        'data': {
+          'type': 'new_pin',
+          'grid': topic.replaceFirst('grid_', ''),
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      }
     };
     final response = await http.post(
       fburl,
@@ -312,6 +352,8 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     );
     if (response.statusCode == 200) {
       print('Notification sent successfully to topic: $topic');
+    } else {
+      print('Error sending notification: ${response.body}');
     }
   }
 
@@ -358,6 +400,26 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     textFieldFocusNode1.dispose();
     textFieldFocusNode2.dispose();
     super.dispose();
+  }
+
+  Future<String> _compressAndConvertImage(String imagePath) async {
+    try {
+      final file = File(imagePath);
+      final bytes = await file.readAsBytes();
+
+      final compressed = await FlutterImageCompress.compressWithList(
+        bytes,
+        minHeight: 800,
+        minWidth: 800,
+        quality: 85,
+      );
+
+      return base64Encode(compressed);
+    } catch (e) {
+      print('Error compressing image: $e');
+      final bytes = await File(imagePath).readAsBytes();
+      return base64Encode(bytes);
+    }
   }
 
   @override
@@ -829,7 +891,11 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                       child: CustomButton(
                         onPressed: () async {
                           await uploadImage();
-                          await sendNotification('need_help');
+                          // Get cell info for topic
+                          final cellInfo = getCellInfo(
+                              location!.latitude, location!.longitude);
+                          final cellName = cellInfo['cellName'];
+                          await sendNotification(cellName);
                           Navigator.of(context).push(MaterialPageRoute(
                               builder: (context) =>
                                   PinConfirmation(docName: docName!)));

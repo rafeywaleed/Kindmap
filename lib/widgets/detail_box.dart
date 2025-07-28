@@ -8,6 +8,7 @@ import 'package:kindmap/config/app_theme.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:kindmap/widgets/base64_image.dart';
 // import 'Model_DetailBox.dart';
 // export 'Model_DetailBox.dart';
 
@@ -131,8 +132,8 @@ class _DetailBoxState extends State<DetailBox> {
                         height: size.width * 0.4,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: Image.network(
-                            snapshot.data!['url'],
+                          child: Base64Image(
+                            base64String: snapshot.data!['imageBase64'],
                             fit: BoxFit.cover,
                           ),
                         ),
