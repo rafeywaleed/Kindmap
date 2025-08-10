@@ -22,7 +22,7 @@ class _LoginFormState extends State<LoginForm> {
   String email = '';
   String password = '';
   String fullname = '';
-  bool login = false;
+  bool login = true;
   bool _passwordVisible = false;
   int attempts = 0;
 

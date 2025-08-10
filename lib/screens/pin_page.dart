@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -107,16 +108,19 @@ class CustomButton extends StatelessWidget {
             side: borderSide,
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null)
-              Padding(
-                padding: iconPadding,
-                child: icon,
-              ),
-            Text(text, style: textStyle),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (icon != null)
+                Padding(
+                  padding: iconPadding,
+                  child: icon,
+                ),
+              Text(text, style: textStyle),
+            ],
+          ),
         ),
       ),
     );
@@ -227,10 +231,11 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   final FocusNode textFieldFocusNode1 = FocusNode();
   final FocusNode textFieldFocusNode2 = FocusNode();
   String? dropDownValue;
-  LatLng? location;
+  late LatLng location;
   final db = FirebaseFirestore.instance;
   String? url;
-  String? docName;
+  late String cellId;
+  late String docName;
 
   Future<Position> _determinePosition() async {
     bool serviceEnabled;
@@ -283,9 +288,10 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
   Future uploadImage() async {
     try {
+      print("ImagePath: ${widget.imagePath}");
       final base64Image = await _compressAndConvertImage(widget.imagePath);
-
-      final cellInfo = getCellInfo(location!.latitude, location!.longitude);
+      debugPrint("Base64Image: $base64Image");
+      final cellInfo = getCellInfo(location.latitude, location.longitude);
       final cellId = cellInfo['cellId'];
       final topic = cellInfo['topic'];
 
@@ -297,8 +303,8 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
       final pinData = {
         'id': pinRef.id,
-        'latitude': location!.latitude,
-        'longitude': location!.longitude,
+        'latitude': location.latitude,
+        'longitude': location.longitude,
         'note': textController1.text.isEmpty ? '(none)' : textController1.text,
         'details':
             textController2.text.isEmpty ? '(none)' : textController2.text,
@@ -311,6 +317,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
       await pinRef.set(pinData);
 
       setState(() {
+        this.cellId = cellId;
         docName = pinRef.id;
       });
 
@@ -325,6 +332,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   }
 
   Future<void> sendNotification(String topic) async {
+    await FirebaseMessaging.instance.subscribeToTopic(topic);
     final fburl = Uri.parse(
         'https://fcm.googleapis.com/v1/projects/kindmap-999d3/messages:send');
     final accessToken = await getAccessToken();
@@ -346,6 +354,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
         },
       }
     };
+
     final response = await http.post(
       fburl,
       headers: headers,
@@ -360,19 +369,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
   Future<String> getAccessToken() async {
     final serviceAccountCredentials = ServiceAccountCredentials.fromJson({
-      "type": "service_account",
-      "project_id": "kindmap-999d3",
-      "private_key_id": dotenv.env['private_key_id'],
-      "private_key": dotenv.env['private_key'],
-      "client_email": dotenv.env['client_email'],
-      "client_id": dotenv.env['client_id'],
-      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-      "token_uri": "https://oauth2.googleapis.com/token",
-      "auth_provider_x509_cert_url":
-          "https://www.googleapis.com/oauth2/v1/certs",
-      "client_x509_cert_url":
-          "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-ga6hv%40kindmap-999d3.iam.gserviceaccount.com",
-      "universe_domain": "googleapis.com"
+      //* Add your service account credentials here
     });
 
     final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
@@ -389,7 +386,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     super.initState();
     getLocation();
     getDotnev();
-    WidgetsBinding.instance?.addPostFrameCallback((_) => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
   Future<void> getDotnev() async {
@@ -897,26 +894,30 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                           await uploadImage();
                           // Get cell info for topic
                           final cellInfo = getCellInfo(
-                              location!.latitude, location!.longitude);
-                          final cellName = cellInfo['cellName'];
+                              location.latitude, location.longitude);
+                          final cellName = cellInfo['topic'];
+                          print("CellInfo: $cellInfo");
+                          print("CellName: $cellName");
                           await sendNotification(cellName);
+                          print("docname: $docName");
                           Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) =>
-                                  PinConfirmation(docName: docName!)));
+                              builder: (context) => PinConfirmation(
+                                  cellId: cellId, docName: docName)));
                         },
-                        text: 'PIN',
-                        icon: const Icon(Icons.pin_drop, size: 15),
+                        text: 'Pin',
+                        icon: Icon(Icons.pin_drop,
+                            color: KMTheme.of(context).primaryBtnText,
+                            size: 18),
                         width: double.infinity,
                         height: 50,
                         padding:
                             const EdgeInsetsDirectional.fromSTEB(0, 0, 0, 0),
                         iconPadding:
-                            const EdgeInsetsDirectional.fromSTEB(0, 0, 0, 0),
-                        color: KMTheme.of(context).primary,
+                            const EdgeInsetsDirectional.fromSTEB(0, 0, 5, 0),
+                        color: KMTheme.of(context).secondary,
                         textStyle: KMTheme.of(context).titleSmall.copyWith(
                               fontFamily: 'Plus Jakarta Sans',
-                              color: KMTheme.of(context).secondary,
-                              letterSpacing: 0,
+                              color: KMTheme.of(context).primaryBtnText,
                               fontWeight: FontWeight.bold,
                             ),
                         borderSide: const BorderSide(

@@ -6,8 +6,9 @@ import 'package:latlong2/latlong.dart';
 import '../widgets/detail_box.dart';
 
 class PinConfirmation extends StatefulWidget {
-  PinConfirmation({super.key, required this.docName});
+  PinConfirmation({super.key, required this.cellId, required this.docName});
 
+  String cellId;
   String docName;
 
   @override
@@ -124,6 +125,7 @@ class _PinConfirmationState extends State<PinConfirmation> {
                       //alignment: Alignment.bottomCenter,
                       child: SizedBox(
                         child: DetailBox(
+                          cellId: widget.cellId,
                           docName: widget.docName,
                           location: location!,
                         ),

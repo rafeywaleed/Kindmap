@@ -15,10 +15,12 @@ import 'package:kindmap/widgets/base64_image.dart';
 class DetailBox extends StatefulWidget {
   DetailBox({
     super.key,
+    required this.cellId,
     required this.docName,
     required this.location,
   });
 
+  String cellId;
   String docName;
   LatLng location;
 
@@ -122,10 +124,13 @@ class _DetailBoxState extends State<DetailBox> {
               //   ),),
               StreamBuilder(
                   stream: FirebaseFirestore.instance
-                      .collection('Pins')
+                      .collection('pins')
+                      .doc(widget.cellId)
+                      .collection('markers')
                       .doc(widget.docName)
                       .snapshots(),
                   builder: ((context, snapshot) {
+                    print(snapshot.data?['imageBase64']);
                     if (snapshot.hasData) {
                       return SizedBox(
                         width: size.width * 0.4,
@@ -133,7 +138,7 @@ class _DetailBoxState extends State<DetailBox> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
                           child: Base64Image(
-                            base64String: snapshot.data!['imageBase64'],
+                            base64String: snapshot.data?['imageBase64'],
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -152,14 +157,16 @@ class _DetailBoxState extends State<DetailBox> {
                           const EdgeInsetsDirectional.fromSTEB(20, 10, 10, 0),
                       child: StreamBuilder(
                         stream: FirebaseFirestore.instance
-                            .collection('Pins')
+                            .collection('pins')
+                            .doc(widget.cellId)
+                            .collection('markers')
                             .doc(widget.docName)
                             .snapshots(),
                         builder: ((context, snapshot) {
                           if (snapshot.hasData) {
                             return FittedBox(
                               child: Text(
-                                '${Geolocator.distanceBetween(snapshot.data!['Latitude'], snapshot.data!['Longitude'], widget.location.latitude, widget.location.longitude).round()}ms away',
+                                '${Geolocator.distanceBetween(snapshot.data!['latitude'], snapshot.data!['longitude'], widget.location.latitude, widget.location.longitude).round()}ms away',
                                 style: KMTheme.of(context).bodyMedium.copyWith(
                                       fontFamily: 'Plus Jakarta Sans',
                                       fontSize: 22.5,
@@ -209,7 +216,9 @@ class _DetailBoxState extends State<DetailBox> {
                     padding: const EdgeInsets.all(10),
                     child: StreamBuilder(
                       stream: FirebaseFirestore.instance
-                          .collection('Pins')
+                          .collection('pins')
+                          .doc(widget.cellId)
+                          .collection('markers')
                           .doc(widget.docName)
                           .snapshots(),
                       builder: ((context, snapshot) {
@@ -218,7 +227,7 @@ class _DetailBoxState extends State<DetailBox> {
                             alignment: Alignment.centerLeft,
                             child: FittedBox(
                               child: Text(
-                                'Note: ${snapshot.data!['Note']}\n\nLocation Detail: ${snapshot.data!['Details']}',
+                                'Note: ${snapshot.data!['note']}\n\nLocation Detail: ${snapshot.data!['details']}',
                                 style: KMTheme.of(context).bodyMedium.copyWith(
                                       fontFamily: 'Poppins',
                                       color: KMTheme.of(context).lineColor,

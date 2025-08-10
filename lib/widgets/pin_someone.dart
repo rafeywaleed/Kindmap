@@ -7,23 +7,23 @@ Widget PinSomeone(Size size, BuildContext context) {
     alignment: Alignment.bottomCenter,
     child: Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Container(
-        height: size.height * 0.08,
-        decoration: BoxDecoration(
-          color: KMTheme.of(context).secondary,
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 12,
-              color: Color(0x33000000),
-              offset: Offset(4, 4),
-            ),
-          ],
-        ),
-        child: GestureDetector(
-          onTap: () async {
-            Navigator.of(context).pushNamed('/camera');
-          },
+      child: GestureDetector(
+        onTap: () async {
+          Navigator.of(context).pushNamed('/camera');
+        },
+        child: Container(
+          height: size.height * 0.08,
+          decoration: BoxDecoration(
+            color: KMTheme.of(context).secondary,
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 12,
+                color: Color(0x33000000),
+                offset: Offset(4, 4),
+              ),
+            ],
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

@@ -5,8 +5,10 @@ import '../config/app_theme.dart';
 import 'pin_page.dart';
 
 class CameraPage extends StatefulWidget {
+  const CameraPage({super.key});
+
   @override
-  _CameraPageState createState() => _CameraPageState();
+  State<CameraPage> createState() => _CameraPageState();
 }
 
 class _CameraPageState extends State<CameraPage> {
@@ -76,9 +78,10 @@ class _CameraPageState extends State<CameraPage> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
             return Stack(
+              fit: StackFit.expand,
               alignment: Alignment.center,
               children: [
-                Container(
+                SizedBox(
                     height: 400, width: 400, child: CameraPreview(_controller)),
                 Positioned(
                   bottom: 80,
