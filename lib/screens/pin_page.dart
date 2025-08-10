@@ -368,9 +368,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   }
 
   Future<String> getAccessToken() async {
-    final serviceAccountCredentials = ServiceAccountCredentials.fromJson({
-      //* Add your service account credentials here
-    });
+    final serviceAccountCredentials = ServiceAccountCredentials.fromJson();
 
     final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
 

@@ -229,6 +229,7 @@ class _MapsState extends State<Maps> {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                           content: Text('Thank You for helping!')));
                       await markerDoc.reference.delete();
+                      await loadMarkers(); // <-- Add this line
                       Navigator.pop(context);
                     },
                   );

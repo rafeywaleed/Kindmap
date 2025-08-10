@@ -8,6 +8,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/config/app_theme.dart';
 import 'package:kindmap/main.dart';
+import 'package:kindmap/services/theme_services.dart' show ThemeProvider;
+import 'package:provider/provider.dart';
 
 import '../models/latlong.dart';
 import '../widgets/map.dart';
@@ -317,10 +319,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                             hoverColor: Colors.transparent,
                                             highlightColor: Colors.transparent,
                                             onTap: () async {
-                                              // Provider.of<ThemeProvider>(
-                                              //         context,
-                                              //         listen: false)
-                                              //     .toggleTheme();
+                                              Provider.of<ThemeProvider>(
+                                                      context,
+                                                      listen: false)
+                                                  .toggleTheme();
                                             },
                                             child: Icon(
                                               Icons.nights_stay,
@@ -345,7 +347,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                             hoverColor: Colors.transparent,
                                             highlightColor: Colors.transparent,
                                             onTap: () async {
-                                              // change theme logic here
+                                              Provider.of<ThemeProvider>(
+                                                      context,
+                                                      listen: false)
+                                                  .toggleTheme();
                                             },
                                             child: Icon(
                                               Icons.wb_sunny_rounded,
