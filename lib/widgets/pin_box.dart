@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:kindmap/widgets/button_pin_box.dart';
 import 'dart:convert';
 
 import 'package:latlong2/latlong.dart';
@@ -121,20 +122,22 @@ class _PinBoxState extends State<PinBox> {
                           .bodyMedium
                           .copyWith(fontSize: 15)),
                   const SizedBox(height: 12),
-                  ElevatedButton(
+                  PinBoxButton(
+                    context: context,
+                    label: 'Navigate',
+                    bgColor: KMTheme.of(context).secondary,
+                    textColor: KMTheme.of(context).primaryText,
                     onPressed: _navigateToLocation,
-                    child: const Text('Navigate',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 12),
-                  ElevatedButton(
+                  PinBoxButton(
+                    context: context,
+                    label: 'SERVED',
+                    bgColor: KMTheme.of(context).primary,
+                    textColor: KMTheme.of(context).primaryBtnText,
+                    weight: FontWeight.w700,
+                    letterSpacing: 1,
                     onPressed: widget.onServe,
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: KMTheme.of(context).primary),
-                    child: const Text('SERVED',
-                        style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
