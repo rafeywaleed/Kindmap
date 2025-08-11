@@ -33,7 +33,7 @@ Widget PinSomeone(Size size, BuildContext context) {
                   'Pin Someone',
                   style: KMTheme.of(context).bodyMedium.copyWith(
                         fontFamily: 'Plus Jakarta Sans',
-                        color: KMTheme.of(context).primaryBtnText,
+                        color: KMTheme.of(context).primaryText,
                         fontSize: 20,
                         letterSpacing: 0,
                         fontWeight: FontWeight.w600,
@@ -44,7 +44,7 @@ Widget PinSomeone(Size size, BuildContext context) {
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Icon(
                   Icons.share_location,
-                  color: KMTheme.of(context).primaryBtnText,
+                  color: KMTheme.of(context).primaryText,
                   size: 40,
                 ),
               ),
