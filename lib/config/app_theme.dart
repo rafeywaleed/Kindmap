@@ -353,7 +353,7 @@ class DarkModeTheme extends KMTheme {
   late Color warning = const Color(0xFFF9CF58);
   late Color error = const Color(0xFFFF5963);
   late Color info = const Color(0xFFFFFFFF);
-  late Color primaryBtnText = Color(0xFFFFFFFF);
+  late Color primaryBtnText = Color.fromARGB(255, 0, 0, 0);
   late Color lineColor = Color(0xFF22282F);
   late Color backgroundComponents = Color(0xFF1B2428);
 
