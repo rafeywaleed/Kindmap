@@ -9,11 +9,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/config/app_theme.dart';
 import 'package:kindmap/main.dart';
 import 'package:kindmap/services/theme_services.dart' show ThemeProvider;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../models/latlong.dart';
 import '../widgets/map.dart';
 import '../widgets/pin_someone.dart';
+import '../services/permission_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,6 +25,73 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+  @override
+  void initState() {
+    super.initState();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    // Request permissions when app starts
+    await _requestPermissions();
+  }
+
+  Future<void> _requestPermissions() async {
+    // Request location permission
+    final hasLocationPermission =
+        await PermissionService.handleLocationPermission();
+    if (!hasLocationPermission) {
+      if (mounted) {
+        _showPermissionDialog(
+          'Location Access Required',
+          'KindMap needs location access to show nearby help requests. Please enable location access in settings.',
+          'location',
+        );
+      }
+    }
+
+    // Request notification permission
+    final hasNotificationPermission =
+        await PermissionService.handleNotificationPermission();
+    if (!hasNotificationPermission) {
+      if (mounted) {
+        _showPermissionDialog(
+          'Notifications',
+          'Enable notifications to stay updated with nearby help requests.',
+          'notification',
+        );
+      }
+    }
+  }
+
+  void _showPermissionDialog(String title, String message, String type) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Not Now'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              if (type == 'location') {
+                await Geolocator.openLocationSettings();
+              } else {
+                await openAppSettings();
+              }
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
