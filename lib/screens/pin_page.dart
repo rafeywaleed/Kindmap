@@ -19,6 +19,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/screens/auth_pages.dart/auth_screen.dart';
 import 'package:kindmap/screens/pin_confirmation.dart';
+import 'package:kindmap/services/get_cell_info.dart';
 
 import 'package:latlong2/latlong.dart';
 
@@ -193,28 +194,6 @@ class _AnimatedEntryContainerState extends State<AnimatedEntryContainer>
   }
 }
 
-Map<String, dynamic> getCellInfo(double lat, double long) {
-  const double kmPerLatDegree = 111.32;
-  const double cellSizeKm = 2.0;
-
-  final deltaLatDeg = cellSizeKm / kmPerLatDegree;
-  final row = (lat / deltaLatDeg).floor();
-
-  final swLat = row * deltaLatDeg;
-  final swLatRad = swLat * pi / 180;
-  final deltaLongDeg = cellSizeKm / (kmPerLatDegree * cos(swLatRad));
-  final col = (long / deltaLongDeg).floor();
-
-  return {
-    'row': row,
-    'col': col,
-    'cellId': '${row}_${col}',
-    'topic': 'grid_${row}_${col}',
-    'deltaLatDeg': deltaLatDeg,
-    'deltaLongDeg': deltaLongDeg,
-  };
-}
-
 class PinPage extends StatefulWidget {
   final String imagePath;
 
@@ -368,7 +347,9 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   }
 
   Future<String> getAccessToken() async {
-    final serviceAccountCredentials = ServiceAccountCredentials.fromJson();
+    final serviceAccountCredentials = ServiceAccountCredentials.fromJson({
+    // cred here
+    });
 
     final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
 
@@ -904,8 +885,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                         },
                         text: 'Pin',
                         icon: Icon(Icons.pin_drop,
-                            color: KMTheme.of(context).primaryBtnText,
-                            size: 18),
+                            color: KMTheme.of(context).primaryText, size: 18),
                         width: double.infinity,
                         height: 50,
                         padding:
@@ -915,7 +895,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                         color: KMTheme.of(context).secondary,
                         textStyle: KMTheme.of(context).titleSmall.copyWith(
                               fontFamily: 'Plus Jakarta Sans',
-                              color: KMTheme.of(context).primaryBtnText,
+                              color: KMTheme.of(context).primaryText,
                               fontWeight: FontWeight.bold,
                             ),
                         borderSide: const BorderSide(
