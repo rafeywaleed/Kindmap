@@ -8,6 +8,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/config/app_theme.dart';
 import 'package:kindmap/main.dart';
+import 'package:kindmap/services/permission_services.dart';
 import 'package:kindmap/services/theme_services.dart' show ThemeProvider;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +16,6 @@ import 'package:provider/provider.dart';
 import '../models/latlong.dart';
 import '../widgets/map.dart';
 import '../widgets/pin_someone.dart';
-import '../services/permission_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
