@@ -1,4 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:kindmap/screens/splash_screen.dart';
 
 import '../screens/IntroScreens.dart';
 import '../screens/auth_pages.dart/login_form.dart';
@@ -16,7 +18,20 @@ import '../screens/settings_pages/profile_page.dart';
 import '../screens/settings_screen.dart';
 import '../widgets/map.dart';
 
-final Map<String, WidgetBuilder> appRoutes = {
+final appRoutes = {
+  '/': (context) => StreamBuilder(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return const HomePage();
+          } else if (snapshot.hasError) {
+            return const Center(child: Text('Error'));
+          } else {
+            return const LoginForm();
+          }
+        },
+      ),
+  '/splash': (context) => const SplashScreen(),
   '/auth': (context) => const LoginForm(),
   // '/home': (context) => const HomePage(),
   '/camera': (context) => CameraPage(),

@@ -5,6 +5,8 @@ import 'package:kindmap/config/routes.dart';
 import 'package:kindmap/firebase_options.dart';
 import 'package:kindmap/screens/auth_pages.dart/login_form.dart';
 import 'package:kindmap/screens/homescreen.dart';
+import 'package:kindmap/screens/splash_screen.dart';
+import 'package:kindmap/services/fcm_service.dart';
 import 'config/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'services/map_services.dart';
@@ -23,6 +25,13 @@ void main() async {
       child: const MyApp(),
     ),
   );
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    try {
+      await FCM().initNotifications();
+    } catch (e) {
+      debugPrint('FCM init failed: $e');
+    }
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -36,18 +45,7 @@ class MyApp extends StatelessWidget {
       theme: LightModeTheme().toThemeData(),
       darkTheme: DarkModeTheme().toThemeData(),
       themeMode: ThemeMode.system,
-      home: StreamBuilder(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return const HomePage();
-          } else if (snapshot.hasError) {
-            return const Center(child: Text('Error'));
-          } else {
-            return const LoginForm();
-          }
-        },
-      ),
+      initialRoute: '/splash',
       routes: appRoutes,
     );
   }

@@ -47,7 +47,7 @@ class FCM {
     await _firebaseMessaging.subscribeToTopic('need_help');
 
     // Initialize local notifications
-    const android = AndroidInitializationSettings('@drawable/ic_launcher');
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: android);
 
     await _localNotifications.initialize(
