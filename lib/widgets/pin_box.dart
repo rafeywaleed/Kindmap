@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:kindmap/widgets/button_pin_box.dart';
+import 'dart:convert';
 
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -84,16 +86,25 @@ class _PinBoxState extends State<PinBox> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(20),
-                    child: CachedNetworkImage(
-                      imageUrl: widget.image,
-                      fit: BoxFit.cover,
-                      width: MediaQuery.of(context).size.width * 0.4,
-                      height: MediaQuery.of(context).size.width * 0.4,
-                      placeholder: (context, url) =>
-                          const CircularProgressIndicator(),
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.error),
-                    ),
+                    child: widget.image.startsWith('http')
+                        ? CachedNetworkImage(
+                            imageUrl: widget.image,
+                            fit: BoxFit.cover,
+                            width: MediaQuery.of(context).size.width * 0.4,
+                            height: MediaQuery.of(context).size.width * 0.4,
+                            placeholder: (context, url) =>
+                                const CircularProgressIndicator(),
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.error),
+                          )
+                        : Image.memory(
+                            base64Decode(widget.image),
+                            fit: BoxFit.cover,
+                            width: MediaQuery.of(context).size.width * 0.4,
+                            height: MediaQuery.of(context).size.width * 0.4,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(Icons.error),
+                          ),
                   ),
                   const SizedBox(height: 10),
                   Text('$distance meters away',
@@ -111,20 +122,22 @@ class _PinBoxState extends State<PinBox> {
                           .bodyMedium
                           .copyWith(fontSize: 15)),
                   const SizedBox(height: 12),
-                  ElevatedButton(
+                  PinBoxButton(
+                    context: context,
+                    label: 'Navigate',
+                    bgColor: KMTheme.of(context).secondary,
+                    textColor: KMTheme.of(context).primaryText,
                     onPressed: _navigateToLocation,
-                    child: const Text('Navigate',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 12),
-                  ElevatedButton(
+                  PinBoxButton(
+                    context: context,
+                    label: 'SERVED',
+                    bgColor: KMTheme.of(context).primary,
+                    textColor: KMTheme.of(context).primaryBtnText,
+                    weight: FontWeight.w700,
+                    letterSpacing: 1,
                     onPressed: widget.onServe,
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: KMTheme.of(context).primary),
-                    child: const Text('SERVED',
-                        style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),

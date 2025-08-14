@@ -19,6 +19,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/screens/auth_pages.dart/auth_screen.dart';
 import 'package:kindmap/screens/pin_confirmation.dart';
+import 'package:kindmap/services/get_cell_info.dart';
 
 import 'package:latlong2/latlong.dart';
 
@@ -193,28 +194,6 @@ class _AnimatedEntryContainerState extends State<AnimatedEntryContainer>
   }
 }
 
-Map<String, dynamic> getCellInfo(double lat, double long) {
-  const double kmPerLatDegree = 111.32;
-  const double cellSizeKm = 2.0;
-
-  final deltaLatDeg = cellSizeKm / kmPerLatDegree;
-  final row = (lat / deltaLatDeg).floor();
-
-  final swLat = row * deltaLatDeg;
-  final swLatRad = swLat * pi / 180;
-  final deltaLongDeg = cellSizeKm / (kmPerLatDegree * cos(swLatRad));
-  final col = (long / deltaLongDeg).floor();
-
-  return {
-    'row': row,
-    'col': col,
-    'cellId': '${row}_${col}',
-    'topic': 'grid_${row}_${col}',
-    'deltaLatDeg': deltaLatDeg,
-    'deltaLongDeg': deltaLongDeg,
-  };
-}
-
 class PinPage extends StatefulWidget {
   final String imagePath;
 
@@ -369,21 +348,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
   Future<String> getAccessToken() async {
     final serviceAccountCredentials = ServiceAccountCredentials.fromJson({
-      "type": "service_account",
-      "project_id": "kindmap-999d3",
-      "private_key_id": "35281edab54945a4c6f1218f1e6f1b31e13d5a1b",
-      "private_key":
-          "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDAa6dwV7uYQr0U\ncf7MnLChuu17g52h/TiiYHwLX/ORRVSRbl6upfBF9Zgxggkj2laWriWCF9sgb1K0\n2G1E28V6vqIYc5qIpu8TnjlgF96XV5kADfaFCnvcYDJkQHcYUQjvulUQYEGiivRc\nb6ppsouPse1Gjf9+2xgNE3p1MMX2DNACQMzS8y59DQe+Arn35NUxWJCNcDBtdyou\nRBsiNMmsiN1OQKjZt+wBolrctKI+2rFBL7nV8wC3Gf/UvGu4n7uCxeKOCMgu3jm3\nGZF2yAIaW/vpYrAHL11b9kWnXac2sPhJnrjlHE2QR/MFFrZRvHtUotL7JIHW5myk\nr906ZWKDAgMBAAECggEAFLB+mcRqgKihuVJjLzpPKP9MYad5NN22pTRH94Ei/fpn\nvsC7StQUzbDmjbbe/LfmmjUHW2xCkhjmL65wW/hgIh6Kl052zegFH3rieG6YmcqV\nbOgTcE1RnBR2gUkH2oQmuIAJ0sTxdGS0eZaYIDKjxu4+sQNmTAw1aH0xAZYeSEz7\nBZvaTVbYswQQvq7vf9Uhdw2XhqR4Xd10yo8V7AANDu7427bX0UBIgsd+5+Ea5QZ7\nAgzZTLmjPxzEune2pw5sIlpTMN3lz+SH8MvBo7k6VN1Hj37dEmCz7KNZuC6aOwAB\nO9vlrQ0fctDV37goD15FOLkSmbbMTMM08v3wLpjDoQKBgQD3+MTryQeTrWwz8287\nApqnNxaeRYVyMuBhokZR/YjnP0lwZmcjtILYV3r7M0zyzJMd0vV3MOJ/WTjhv4BP\nWd1dkcr78eM3USuK6ilw23uFZWV9e+FXqV9r4dzqJi3pYzrLyH+1zh/2/0SLik3z\nFs6lhlTMbhf/m0frsoqRu8zM5QKBgQDGpneSO9G2c1L+m79NZsJoDJoPYl1ivVtA\nk/z+Q/z7N0ke6w65HfAVihZDDpf5oD8ldG7XGfyARhhkZUnTqNTy0IiTwp2+F2aK\n9Len6mRwLpt2Kjt5vodlGbtZPrdtplUIeIGgYpgZiRuAdDg6jXs1Bmkgp7yC4Oku\nz3SSMixjRwKBgQCCtC2X2q6TuKV//KB0ijraSL8zTZG5T/fVfqNyNCElQsaC6HcU\n6uDNB89a+P9mO06QOdIIsUuxtGW3GCmZqdR0rZRAmI8baT16S1LsmcPR3FBShCmS\n+0PAqZy4DsfEbPlg0J4ARlWy63pF0vCjYTIrLVMlLiKYKFEQe1tu1X5twQKBgQCU\nU+I+b6okaLIU6OiL++m3VYmHaTQ/sRI9AwNKPCvezKYtjug8c008WBJNWc1CmFPu\nPKUyufWfNjeqZzMb9xmigPEqG4w7Ty/DG/0yRUNfvH1aWyhzvD9Oz0rj1X+TQTqH\nC6wGvPfDQWwmmyENH21a54GB351TwGp9CGyLaSlZqwKBgEKpr7I0FXufPPNbsIVP\nzjIbb4U30+UhW2bjgdXJaCY6A9A0xeWXVtOmgxRu7EfBUM3+UTeBdEyvs3GHnoED\n5dqMzA4R+dyCV+vi92GXLx/9k8rp9ch8IDzE1Nmy52m7MEuXoJappZ1yF/mHN5NN\naEPWFUBwIRZzWHp5RZfIw9eG\n-----END PRIVATE KEY-----\n",
-      "client_email":
-          "firebase-adminsdk-ga6hv@kindmap-999d3.iam.gserviceaccount.com",
-      "client_id": "109937053761461466716",
-      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-      "token_uri": "https://oauth2.googleapis.com/token",
-      "auth_provider_x509_cert_url":
-          "https://www.googleapis.com/oauth2/v1/certs",
-      "client_x509_cert_url":
-          "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-ga6hv%40kindmap-999d3.iam.gserviceaccount.com",
-      "universe_domain": "googleapis.com"
+    // cred here
     });
 
     final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
@@ -920,8 +885,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                         },
                         text: 'Pin',
                         icon: Icon(Icons.pin_drop,
-                            color: KMTheme.of(context).primaryBtnText,
-                            size: 18),
+                            color: KMTheme.of(context).primaryText, size: 18),
                         width: double.infinity,
                         height: 50,
                         padding:
@@ -931,7 +895,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                         color: KMTheme.of(context).secondary,
                         textStyle: KMTheme.of(context).titleSmall.copyWith(
                               fontFamily: 'Plus Jakarta Sans',
-                              color: KMTheme.of(context).primaryBtnText,
+                              color: KMTheme.of(context).primaryText,
                               fontWeight: FontWeight.bold,
                             ),
                         borderSide: const BorderSide(

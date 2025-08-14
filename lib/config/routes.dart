@@ -33,7 +33,7 @@ final appRoutes = {
       ),
   '/splash': (context) => const SplashScreen(),
   '/auth': (context) => const LoginForm(),
-  // '/home': (context) => const HomePage(),
+  '/home': (context) => const HomePage(),
   '/camera': (context) => CameraPage(),
   '/settings': (context) => const SettingsPage(),
   '/profile': (context) => const ProfilePage(),
