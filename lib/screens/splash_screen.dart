@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:kindmap/config/app_theme.dart';
 import 'package:video_player/video_player.dart';
@@ -22,7 +23,8 @@ class _SplashScreenState extends State<SplashScreen> {
     _started = true;
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final asset = 'assets/images/${isDark ? 'kindmap_splash_dark.mp4' : 'kindmap_splash.mp4'}';
+    final asset =
+        'assets/images/${isDark ? 'kindmap_splash_dark.mp4' : 'kindmap_splash.mp4'}';
 
     final controller = VideoPlayerController.asset(asset);
     _controller = controller;
@@ -52,7 +54,13 @@ class _SplashScreenState extends State<SplashScreen> {
   void _goHome() {
     if (_navigated || !mounted) return;
     _navigated = true;
-    Navigator.of(context).pushReplacementNamed('/');
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else {
+      Navigator.of(context).pushReplacementNamed('/auth');
+    }
   }
 
   @override

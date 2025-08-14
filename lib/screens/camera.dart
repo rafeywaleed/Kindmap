@@ -59,8 +59,28 @@ class _CameraPageState extends State<CameraPage> {
       final image = await _controller.takePicture();
       if (image != null) {
         Navigator.of(context).push(
-          MaterialPageRoute(
-              builder: (context) => PinPage(imagePath: image.path)),
+          PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 800),
+              reverseTransitionDuration: const Duration(milliseconds: 600),
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  PinPage(imagePath: image.path),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                const begin = Offset(0.0, 1.0);
+                const end = Offset.zero;
+                const curve = Curves.easeInOutCubic;
+
+                var tween = Tween(begin: begin, end: end)
+                    .chain(CurveTween(curve: curve));
+
+                return SlideTransition(
+                  position: animation.drive(tween),
+                  child: FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  ),
+                );
+              }),
         );
       }
     } catch (e) {
@@ -71,7 +91,6 @@ class _CameraPageState extends State<CameraPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Camera')),
       backgroundColor: KMTheme.of(context).primaryBackground,
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
@@ -79,43 +98,120 @@ class _CameraPageState extends State<CameraPage> {
           if (snapshot.connectionState == ConnectionState.done) {
             return Stack(
               fit: StackFit.expand,
-              alignment: Alignment.center,
               children: [
-                SizedBox(
-                    height: 400, width: 400, child: CameraPreview(_controller)),
+                // Camera preview with Hero
+                Hero(
+                  tag: 'camera_preview',
+                  child: CameraPreview(_controller),
+                ),
+
+                // App bar with back button
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: AppBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    leading: Hero(
+                      tag: 'camera_icon',
+                      child: IconButton(
+                        icon: Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Camera controls
                 Positioned(
                   bottom: 80,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ValueListenableBuilder<bool>(
-                        valueListenable: _isTorchOn,
-                        builder: (context, isTorchOn, child) {
-                          return GestureDetector(
-                            onTap: _toggleTorch,
-                            child: Icon(
-                              isTorchOn ? Icons.flash_on : Icons.flash_off,
-                              color: KMTheme.of(context).primaryText,
-                              size: 40,
-                            ),
-                          );
-                        },
-                      ),
-                      GestureDetector(
-                        onTap: _capturePhoto,
-                        child: Icon(
-                          Icons.camera,
-                          color: KMTheme.of(context).primaryText,
-                          size: 60,
+                  left: 0,
+                  right: 0,
+                  child: Hero(
+                    tag: 'pin_button',
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _isTorchOn,
+                          builder: (context, isTorchOn, child) {
+                            return GestureDetector(
+                              onTap: _toggleTorch,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color:
+                                      KMTheme.of(context).secondaryBackground,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                padding: EdgeInsets.all(8),
+                                child: Icon(
+                                  isTorchOn ? Icons.flash_on : Icons.flash_off,
+                                  color: KMTheme.of(context).primaryText,
+                                  size: 30,
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      ),
-                    ],
+                        GestureDetector(
+                          onTap: _capturePhoto,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: KMTheme.of(context).secondaryBackground,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.camera,
+                              color: KMTheme.of(context).primaryText,
+                              size: 70,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: KMTheme.of(context).secondaryBackground,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            padding: EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.close,
+                              color: KMTheme.of(context).primaryText,
+                              size: 30,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             );
           } else {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           }
         },
       ),

@@ -17,11 +17,15 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  final themeProvider = ThemeProvider();
+  await themeProvider.loadTheme();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => MapProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider.value(value: themeProvider),
       ],
       child: const MyApp(),
     ),
@@ -40,25 +44,30 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Kindmap',
-      debugShowCheckedModeBanner: false,
-      theme: LightModeTheme().toThemeData(),
-      darkTheme: DarkModeTheme().toThemeData(),
-      themeMode: ThemeMode.system,
-      home: StreamBuilder(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return const HomePage();
-          } else if (snapshot.hasError) {
-            return const Center(child: Text('Error'));
-          } else {
-            return const LoginForm();
-          }
-        },
-      ),
-      routes: appRoutes,
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'Kindmap',
+          debugShowCheckedModeBanner: false,
+          theme: LightModeTheme().toThemeData(),
+          darkTheme: DarkModeTheme().toThemeData(),
+          themeMode: themeProvider.themeMode,
+          home: StreamBuilder(
+            stream: FirebaseAuth.instance.authStateChanges(),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                return const HomePage();
+              } else if (snapshot.hasError) {
+                return const Center(child: Text('Error'));
+              } else {
+                return const LoginForm();
+              }
+            },
+          ),
+          routes: appRoutes,
+          initialRoute: '/splash',
+        );
+      },
     );
   }
 }

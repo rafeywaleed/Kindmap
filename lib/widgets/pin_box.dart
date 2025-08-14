@@ -88,6 +88,7 @@ class _PinBoxState extends State<PinBox> {
                     borderRadius: BorderRadius.circular(20),
                     child: widget.image.startsWith('http')
                         ? CachedNetworkImage(
+                          
                             imageUrl: widget.image,
                             fit: BoxFit.cover,
                             width: MediaQuery.of(context).size.width * 0.4,
@@ -137,6 +138,7 @@ class _PinBoxState extends State<PinBox> {
                     textColor: KMTheme.of(context).primaryBtnText,
                     weight: FontWeight.w700,
                     letterSpacing: 1,
+
                     onPressed: widget.onServe,
                   ),
                 ],

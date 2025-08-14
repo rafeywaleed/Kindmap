@@ -347,9 +347,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   }
 
   Future<String> getAccessToken() async {
-    final serviceAccountCredentials = ServiceAccountCredentials.fromJson({
-    // cred here
-    });
+    final serviceAccountCredentials = ServiceAccountCredentials.fromJson({});
 
     final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
 
@@ -408,444 +406,562 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
       onTap: () => unfocusNode.canRequestFocus
           ? FocusScope.of(context).requestFocus(unfocusNode)
           : FocusScope.of(context).unfocus(),
-      child: Scaffold(
-        key: scaffoldKey,
-        backgroundColor: KMTheme.of(context).accent4,
-        body: Column(
-          mainAxisSize: MainAxisSize.max,
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(5, 12, 5, 10),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.max,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding:
-                            const EdgeInsetsDirectional.fromSTEB(14, 14, 14, 0),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.max,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            CustomIconButton(
-                              borderColor: Colors.transparent,
-                              borderRadius: 30,
-                              borderWidth: 1,
-                              buttonSize: 40,
-                              fillColor:
-                                  KMTheme.of(context).secondaryBackground,
-                              icon: Icon(
-                                Icons.arrow_back_ios_rounded,
-                                color: KMTheme.of(context).primaryText,
-                                size: 20,
-                              ),
-                              onPressed: () async {
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.max,
-                              children: [
-                                CustomIconButton(
-                                  borderColor: Colors.transparent,
-                                  borderRadius: 30,
-                                  borderWidth: 1,
-                                  buttonSize: 40,
-                                  fillColor:
-                                      KMTheme.of(context).secondaryBackground,
-                                  icon: Icon(
-                                    Icons.keyboard_control_outlined,
-                                    color: KMTheme.of(context).primaryText,
-                                    size: 20,
-                                  ),
-                                  onPressed: () {
-                                    print('IconButton pressed ...');
-                                  },
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        child: Scaffold(
+          key: scaffoldKey,
+          backgroundColor: KMTheme.of(context).accent4,
+          body: Column(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(5, 12, 5, 10),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.max,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsetsDirectional.fromSTEB(
+                              14, 14, 14, 0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.max,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              CustomIconButton(
+                                borderColor: Colors.transparent,
+                                borderRadius: 30,
+                                borderWidth: 1,
+                                buttonSize: 40,
+                                fillColor:
+                                    KMTheme.of(context).secondaryBackground,
+                                icon: Icon(
+                                  Icons.arrow_back_ios_rounded,
+                                  color: KMTheme.of(context).primaryText,
+                                  size: 20,
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Align(
-                        alignment: const AlignmentDirectional(0, 0),
-                        child: Padding(
-                          padding: const EdgeInsets.all(15),
-                          child: Container(
-                            width: 200,
-                            height: 200,
-                            decoration: BoxDecoration(
-                              color: KMTheme.of(context).secondaryBackground,
-                              image: DecorationImage(
-                                fit: BoxFit.cover,
-                                image: FileImage(File(widget.imagePath)),
+                                onPressed: () async {
+                                  Navigator.of(context).pop();
+                                },
                               ),
-                              borderRadius: BorderRadius.circular(10),
+                              Row(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  CustomIconButton(
+                                    borderColor: Colors.transparent,
+                                    borderRadius: 30,
+                                    borderWidth: 1,
+                                    buttonSize: 40,
+                                    fillColor:
+                                        KMTheme.of(context).secondaryBackground,
+                                    icon: Icon(
+                                      Icons.keyboard_control_outlined,
+                                      color: KMTheme.of(context).primaryText,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      print('IconButton pressed ...');
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Align(
+                          alignment: const AlignmentDirectional(0, 0),
+                          child: Padding(
+                            padding: const EdgeInsets.all(15),
+                            child: // Replace the image container with this Hero-wrapped version
+                                Hero(
+                              tag: 'camera-preview-to-pin',
+                              flightShuttleBuilder: (flightContext,
+                                  animation,
+                                  flightDirection,
+                                  fromHeroContext,
+                                  toHeroContext) {
+                                final scaleAnimation =
+                                    Tween<double>(begin: 0.5, end: 1.0).animate(
+                                  CurvedAnimation(
+                                    parent: animation,
+                                    curve: Curves.fastOutSlowIn,
+                                  ),
+                                );
+
+                                return AnimatedBuilder(
+                                  animation: animation,
+                                  builder: (context, child) {
+                                    return Transform.scale(
+                                      scale: scaleAnimation.value,
+                                      child: Opacity(
+                                        opacity: Curves.easeInOutCubic
+                                            .transform(animation.value),
+                                        child: child,
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    width: 200,
+                                    height: 200,
+                                    decoration: BoxDecoration(
+                                      color: KMTheme.of(context)
+                                          .secondaryBackground,
+                                      image: DecorationImage(
+                                        fit: BoxFit.cover,
+                                        image:
+                                            FileImage(File(widget.imagePath)),
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 200,
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  color:
+                                      KMTheme.of(context).secondaryBackground,
+                                  image: DecorationImage(
+                                    fit: BoxFit.cover,
+                                    image: FileImage(File(widget.imagePath)),
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Padding(
-                        padding:
-                            const EdgeInsetsDirectional.fromSTEB(15, 0, 15, 10),
-                        child: Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: KMTheme.of(context).secondaryBackground,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.max,
-                              children: [
-                                Align(
-                                  alignment: const AlignmentDirectional(-1, 0),
-                                  child: Padding(
-                                    padding:
-                                        const EdgeInsetsDirectional.fromSTEB(
-                                            10, 0, 10, 10),
-                                    child: Container(
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        color: KMTheme.of(context)
-                                            .secondaryBackground,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: SingleChildScrollView(
-                                        padding: const EdgeInsetsDirectional
-                                            .fromSTEB(5, 0, 5, 10),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.max,
-                                          children: [
-                                            Align(
-                                              alignment:
-                                                  const AlignmentDirectional(
-                                                      -1, 0),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsetsDirectional
-                                                        .fromSTEB(15, 0, 0, 0),
-                                                child: Text(
-                                                  'Add a note: ',
-                                                  style: KMTheme.of(context)
-                                                      .bodyMedium
-                                                      .copyWith(
-                                                        fontFamily:
-                                                            'Plus Jakarta Sans',
-                                                        fontSize: 22,
-                                                        letterSpacing: 0,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color:
-                                                            KMTheme.of(context)
-                                                                .primaryText,
-                                                      ),
-                                                ),
-                                              ),
-                                            ),
-                                            Align(
-                                              alignment:
-                                                  const AlignmentDirectional(
-                                                      0, 0),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsetsDirectional
-                                                        .fromSTEB(8, 0, 8, 8),
-                                                child: TextFormField(
-                                                  controller: textController1,
-                                                  focusNode:
-                                                      textFieldFocusNode1,
-                                                  obscureText: false,
-                                                  decoration: InputDecoration(
-                                                    labelStyle:
-                                                        KMTheme.of(context)
-                                                            .labelMedium
-                                                            .copyWith(
-                                                              fontFamily:
-                                                                  'Readex Pro',
-                                                              letterSpacing: 0,
-                                                            ),
-                                                    hintText:
-                                                        'ex: Food, Money\n(optional)',
-                                                    hintStyle:
-                                                        KMTheme.of(context)
-                                                            .labelMedium
-                                                            .copyWith(
-                                                              fontFamily:
-                                                                  'Readex Pro',
-                                                              letterSpacing: 0,
-                                                            ),
-                                                    enabledBorder:
-                                                        OutlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                        color:
-                                                            KMTheme.of(context)
-                                                                .secondaryText,
-                                                        width: 2,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              22),
-                                                    ),
-                                                    focusedBorder:
-                                                        OutlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                        color:
-                                                            KMTheme.of(context)
-                                                                .primary,
-                                                        width: 2,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              22),
-                                                    ),
-                                                    errorBorder:
-                                                        OutlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                        color:
-                                                            KMTheme.of(context)
-                                                                .error,
-                                                        width: 2,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              22),
-                                                    ),
-                                                    focusedErrorBorder:
-                                                        OutlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                        color:
-                                                            KMTheme.of(context)
-                                                                .error,
-                                                        width: 2,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              22),
-                                                    ),
-                                                  ),
-                                                  style: KMTheme.of(context)
-                                                      .bodyMedium
-                                                      .copyWith(
-                                                        fontFamily:
-                                                            'Readex Pro',
-                                                        letterSpacing: 0,
-                                                      ),
-                                                  maxLines: 3,
-                                                  minLines: null,
-                                                ),
-                                              ),
-                                            ),
-                                            Align(
-                                              alignment:
-                                                  const AlignmentDirectional(
-                                                      -1, 0),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsetsDirectional
-                                                        .fromSTEB(15, 0, 0, 0),
-                                                child: Text(
-                                                  'Location details:',
-                                                  style: KMTheme.of(context)
-                                                      .bodyMedium
-                                                      .copyWith(
-                                                        fontFamily:
-                                                            'Plus Jakarta Sans',
-                                                        fontSize: 22,
-                                                        letterSpacing: 0,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                ),
-                                              ),
-                                            ),
-                                            Align(
-                                              alignment:
-                                                  const AlignmentDirectional(
-                                                      0, 0),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsetsDirectional
-                                                        .fromSTEB(8, 0, 8, 8),
-                                                child: TextFormField(
-                                                  controller: textController2,
-                                                  focusNode:
-                                                      textFieldFocusNode2,
-                                                  obscureText: false,
-                                                  decoration: InputDecoration(
-                                                    labelStyle:
-                                                        KMTheme.of(context)
-                                                            .labelMedium
-                                                            .copyWith(
-                                                              fontFamily:
-                                                                  'Readex Pro',
-                                                              letterSpacing: 0,
-                                                            ),
-                                                    hintText: '(optional)',
-                                                    hintStyle:
-                                                        KMTheme.of(context)
-                                                            .labelMedium
-                                                            .copyWith(
-                                                              fontFamily:
-                                                                  'Readex Pro',
-                                                              letterSpacing: 0,
-                                                            ),
-                                                    enabledBorder:
-                                                        OutlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                        color:
-                                                            KMTheme.of(context)
-                                                                .secondaryText,
-                                                        width: 2,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              22),
-                                                    ),
-                                                    focusedBorder:
-                                                        OutlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                        color:
-                                                            KMTheme.of(context)
-                                                                .primary,
-                                                        width: 2,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              22),
-                                                    ),
-                                                    errorBorder:
-                                                        OutlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                        color:
-                                                            KMTheme.of(context)
-                                                                .error,
-                                                        width: 2,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              22),
-                                                    ),
-                                                    focusedErrorBorder:
-                                                        OutlineInputBorder(
-                                                      borderSide: BorderSide(
-                                                        color:
-                                                            KMTheme.of(context)
-                                                                .error,
-                                                        width: 2,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              22),
-                                                    ),
-                                                  ),
-                                                  style: KMTheme.of(context)
-                                                      .bodyMedium
-                                                      .copyWith(
-                                                        fontFamily:
-                                                            'Readex Pro',
-                                                        letterSpacing: 0,
-                                                      ),
-                                                  minLines: null,
-                                                ),
-                                              ),
-                                            ),
-                                            Align(
-                                              alignment:
-                                                  const AlignmentDirectional(
-                                                      -1, 0),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsetsDirectional
-                                                        .fromSTEB(15, 0, 0, 0),
-                                                child: Text(
-                                                  'Timer:',
-                                                  style: KMTheme.of(context)
-                                                      .bodyMedium
-                                                      .copyWith(
-                                                        fontFamily:
-                                                            'Plus Jakarta Sans',
-                                                        fontSize: 22,
-                                                        letterSpacing: 0,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                ),
-                                              ),
-                                            ),
-                                            Align(
-                                              alignment:
-                                                  const AlignmentDirectional(
-                                                      -1, 0),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsetsDirectional
-                                                        .fromSTEB(15, 0, 0, 0),
-                                                child: FittedBox(
+                        Padding(
+                          padding: const EdgeInsetsDirectional.fromSTEB(
+                              15, 0, 15, 10),
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: KMTheme.of(context).secondaryBackground,
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.max,
+                                children: [
+                                  Align(
+                                    alignment:
+                                        const AlignmentDirectional(-1, 0),
+                                    child: Padding(
+                                      padding:
+                                          const EdgeInsetsDirectional.fromSTEB(
+                                              10, 0, 10, 10),
+                                      child: Container(
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: KMTheme.of(context)
+                                              .secondaryBackground,
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: SingleChildScrollView(
+                                          padding: const EdgeInsetsDirectional
+                                              .fromSTEB(5, 0, 5, 10),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.max,
+                                            children: [
+                                              Align(
+                                                alignment:
+                                                    const AlignmentDirectional(
+                                                        -1, 0),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsetsDirectional
+                                                          .fromSTEB(
+                                                          15, 0, 0, 0),
                                                   child: Text(
-                                                    'Set the time, when the location you pinned\nshould disappear from the map',
+                                                    'Add a note: ',
                                                     style: KMTheme.of(context)
                                                         .bodyMedium
                                                         .copyWith(
                                                           fontFamily:
                                                               'Plus Jakarta Sans',
-                                                          color: KMTheme.of(
-                                                                  context)
-                                                              .secondaryText,
-                                                          fontSize: 15,
+                                                          fontSize: 22,
                                                           letterSpacing: 0,
                                                           fontWeight:
-                                                              FontWeight.w500,
+                                                              FontWeight.bold,
+                                                          color: KMTheme.of(
+                                                                  context)
+                                                              .primaryText,
                                                         ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.all(15.0),
-                                              child: DropdownButton<String>(
-                                                value: dropDownValue,
-                                                onChanged: (String? newValue) {
-                                                  setState(() {
-                                                    dropDownValue = newValue!;
-                                                  });
-                                                },
-                                                items: <String>[
-                                                  'Default (3 hrs)',
-                                                  '1 hr',
-                                                  '5 hr',
-                                                  '10 hr',
-                                                  '24 hr'
-                                                ].map<DropdownMenuItem<String>>(
-                                                    (String value) {
-                                                  return DropdownMenuItem<
-                                                      String>(
-                                                    value: value,
-                                                    child: Text(value),
-                                                  );
-                                                }).toList(),
-                                                hint: const Text(
-                                                    'Default (3 hrs)'),
-                                                icon: const Icon(
-                                                  Icons
-                                                      .keyboard_arrow_down_rounded,
-                                                  size: 24,
+                                              Align(
+                                                alignment:
+                                                    const AlignmentDirectional(
+                                                        0, 0),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsetsDirectional
+                                                          .fromSTEB(8, 0, 8, 8),
+                                                  child: TextFormField(
+                                                    controller: textController1,
+                                                    focusNode:
+                                                        textFieldFocusNode1,
+                                                    obscureText: false,
+                                                    decoration: InputDecoration(
+                                                      labelStyle:
+                                                          KMTheme.of(context)
+                                                              .labelMedium
+                                                              .copyWith(
+                                                                fontFamily:
+                                                                    'Readex Pro',
+                                                                letterSpacing:
+                                                                    0,
+                                                              ),
+                                                      hintText:
+                                                          'ex: Food, Money\n(optional)',
+                                                      hintStyle:
+                                                          KMTheme.of(context)
+                                                              .labelMedium
+                                                              .copyWith(
+                                                                fontFamily:
+                                                                    'Readex Pro',
+                                                                letterSpacing:
+                                                                    0,
+                                                              ),
+                                                      enabledBorder:
+                                                          OutlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: KMTheme.of(
+                                                                  context)
+                                                              .secondaryText,
+                                                          width: 2,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(22),
+                                                      ),
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: KMTheme.of(
+                                                                  context)
+                                                              .primary,
+                                                          width: 2,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(22),
+                                                      ),
+                                                      errorBorder:
+                                                          OutlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: KMTheme.of(
+                                                                  context)
+                                                              .error,
+                                                          width: 2,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(22),
+                                                      ),
+                                                      focusedErrorBorder:
+                                                          OutlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: KMTheme.of(
+                                                                  context)
+                                                              .error,
+                                                          width: 2,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(22),
+                                                      ),
+                                                    ),
+                                                    style: KMTheme.of(context)
+                                                        .bodyMedium
+                                                        .copyWith(
+                                                          fontFamily:
+                                                              'Readex Pro',
+                                                          letterSpacing: 0,
+                                                        ),
+                                                    maxLines: 3,
+                                                    minLines: null,
+                                                  ),
                                                 ),
-                                                isExpanded: true,
                                               ),
-                                            ),
-                                          ],
+                                              Align(
+                                                alignment:
+                                                    const AlignmentDirectional(
+                                                        -1, 0),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsetsDirectional
+                                                          .fromSTEB(
+                                                          15, 0, 0, 0),
+                                                  child: Text(
+                                                    'Location details:',
+                                                    style: KMTheme.of(context)
+                                                        .bodyMedium
+                                                        .copyWith(
+                                                          fontFamily:
+                                                              'Plus Jakarta Sans',
+                                                          fontSize: 22,
+                                                          letterSpacing: 0,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                              Align(
+                                                alignment:
+                                                    const AlignmentDirectional(
+                                                        0, 0),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsetsDirectional
+                                                          .fromSTEB(8, 0, 8, 8),
+                                                  child: TextFormField(
+                                                    controller: textController2,
+                                                    focusNode:
+                                                        textFieldFocusNode2,
+                                                    obscureText: false,
+                                                    decoration: InputDecoration(
+                                                      labelStyle:
+                                                          KMTheme.of(context)
+                                                              .labelMedium
+                                                              .copyWith(
+                                                                fontFamily:
+                                                                    'Readex Pro',
+                                                                letterSpacing:
+                                                                    0,
+                                                              ),
+                                                      hintText: '(optional)',
+                                                      hintStyle:
+                                                          KMTheme.of(context)
+                                                              .labelMedium
+                                                              .copyWith(
+                                                                fontFamily:
+                                                                    'Readex Pro',
+                                                                letterSpacing:
+                                                                    0,
+                                                              ),
+                                                      enabledBorder:
+                                                          OutlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: KMTheme.of(
+                                                                  context)
+                                                              .secondaryText,
+                                                          width: 2,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(22),
+                                                      ),
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: KMTheme.of(
+                                                                  context)
+                                                              .primary,
+                                                          width: 2,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(22),
+                                                      ),
+                                                      errorBorder:
+                                                          OutlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: KMTheme.of(
+                                                                  context)
+                                                              .error,
+                                                          width: 2,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(22),
+                                                      ),
+                                                      focusedErrorBorder:
+                                                          OutlineInputBorder(
+                                                        borderSide: BorderSide(
+                                                          color: KMTheme.of(
+                                                                  context)
+                                                              .error,
+                                                          width: 2,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(22),
+                                                      ),
+                                                    ),
+                                                    style: KMTheme.of(context)
+                                                        .bodyMedium
+                                                        .copyWith(
+                                                          fontFamily:
+                                                              'Readex Pro',
+                                                          letterSpacing: 0,
+                                                        ),
+                                                    minLines: null,
+                                                  ),
+                                                ),
+                                              ),
+                                              Align(
+                                                alignment:
+                                                    const AlignmentDirectional(
+                                                        -1, 0),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsetsDirectional
+                                                          .fromSTEB(
+                                                          15, 0, 0, 0),
+                                                  child: Text(
+                                                    'Timer:',
+                                                    style: KMTheme.of(context)
+                                                        .bodyMedium
+                                                        .copyWith(
+                                                          fontFamily:
+                                                              'Plus Jakarta Sans',
+                                                          fontSize: 22,
+                                                          letterSpacing: 0,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
+                                              Align(
+                                                alignment:
+                                                    const AlignmentDirectional(
+                                                        -1, 0),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsetsDirectional
+                                                          .fromSTEB(
+                                                          15, 0, 0, 0),
+                                                  child: FittedBox(
+                                                    child: Text(
+                                                      'Set the time, when the location you pinned\nshould disappear from the map',
+                                                      style: KMTheme.of(context)
+                                                          .bodyMedium
+                                                          .copyWith(
+                                                            fontFamily:
+                                                                'Plus Jakarta Sans',
+                                                            color: KMTheme.of(
+                                                                    context)
+                                                                .secondaryText,
+                                                            fontSize: 15,
+                                                            letterSpacing: 0,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.all(15.0),
+                                                child: DropdownButton<String>(
+                                                  value: dropDownValue,
+                                                  onChanged:
+                                                      (String? newValue) {
+                                                    setState(() {
+                                                      dropDownValue = newValue!;
+                                                    });
+                                                  },
+                                                  items: <String>[
+                                                    'Default (3 hrs)',
+                                                    '1 hr',
+                                                    '5 hr',
+                                                    '10 hr',
+                                                    '24 hr'
+                                                  ].map<
+                                                          DropdownMenuItem<
+                                                              String>>(
+                                                      (String value) {
+                                                    return DropdownMenuItem<
+                                                        String>(
+                                                      value: value,
+                                                      child: Text(value),
+                                                    );
+                                                  }).toList(),
+                                                  hint: const Text(
+                                                      'Default (3 hrs)'),
+                                                  icon: const Icon(
+                                                    Icons
+                                                        .keyboard_arrow_down_rounded,
+                                                    size: 24,
+                                                  ),
+                                                  isExpanded: true,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Hero(
+                tag: 'pin_button',
+                child: Container(
+                  width: double.infinity,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: KMTheme.of(context).primaryBackground,
+                  ),
+                  alignment: const AlignmentDirectional(0, 0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      Padding(
+                        padding:
+                            const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 0),
+                        child: CustomButton(
+                          onPressed: () async {
+                            await uploadImage();
+                            // Get cell info for topic
+                            final cellInfo = getCellInfo(
+                                location.latitude, location.longitude);
+                            final cellName = cellInfo['topic'];
+                            print("CellInfo: $cellInfo");
+                            print("CellName: $cellName");
+                            await sendNotification(cellName);
+                            print("docname: $docName");
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => PinConfirmation(
+                                    cellId: cellId, docName: docName)));
+                          },
+                          text: 'Pin',
+                          icon: Icon(Icons.pin_drop,
+                              color: KMTheme.of(context).primaryText, size: 18),
+                          width: double.infinity,
+                          height: 50,
+                          padding:
+                              const EdgeInsetsDirectional.fromSTEB(0, 0, 0, 0),
+                          iconPadding:
+                              const EdgeInsetsDirectional.fromSTEB(0, 0, 5, 0),
+                          color: KMTheme.of(context).secondary,
+                          textStyle: KMTheme.of(context).titleSmall.copyWith(
+                                fontFamily: 'Plus Jakarta Sans',
+                                color: KMTheme.of(context).primaryText,
+                                fontWeight: FontWeight.bold,
+                              ),
+                          borderSide: const BorderSide(
+                            color: Colors.transparent,
+                            width: 1,
                           ),
                         ),
                       ),
@@ -853,62 +969,8 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-            ),
-            AnimatedEntryContainer(
-              child: Container(
-                width: double.infinity,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: KMTheme.of(context).primaryBackground,
-                ),
-                alignment: const AlignmentDirectional(0, 0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    Padding(
-                      padding:
-                          const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 0),
-                      child: CustomButton(
-                        onPressed: () async {
-                          await uploadImage();
-                          // Get cell info for topic
-                          final cellInfo = getCellInfo(
-                              location.latitude, location.longitude);
-                          final cellName = cellInfo['topic'];
-                          print("CellInfo: $cellInfo");
-                          print("CellName: $cellName");
-                          await sendNotification(cellName);
-                          print("docname: $docName");
-                          Navigator.of(context).push(MaterialPageRoute(
-                              builder: (context) => PinConfirmation(
-                                  cellId: cellId, docName: docName)));
-                        },
-                        text: 'Pin',
-                        icon: Icon(Icons.pin_drop,
-                            color: KMTheme.of(context).primaryText, size: 18),
-                        width: double.infinity,
-                        height: 50,
-                        padding:
-                            const EdgeInsetsDirectional.fromSTEB(0, 0, 0, 0),
-                        iconPadding:
-                            const EdgeInsetsDirectional.fromSTEB(0, 0, 5, 0),
-                        color: KMTheme.of(context).secondary,
-                        textStyle: KMTheme.of(context).titleSmall.copyWith(
-                              fontFamily: 'Plus Jakarta Sans',
-                              color: KMTheme.of(context).primaryText,
-                              fontWeight: FontWeight.bold,
-                            ),
-                        borderSide: const BorderSide(
-                          color: Colors.transparent,
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

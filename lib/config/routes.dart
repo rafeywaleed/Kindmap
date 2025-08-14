@@ -19,25 +19,25 @@ import '../screens/settings_screen.dart';
 import '../widgets/map.dart';
 
 final appRoutes = {
-  '/': (context) => StreamBuilder(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            return const HomePage();
-          } else if (snapshot.hasError) {
-            return const Center(child: Text('Error'));
-          } else {
-            return const LoginForm();
-          }
-        },
-      ),
+  // '/': (context) => StreamBuilder(
+  //       stream: FirebaseAuth.instance.authStateChanges(),
+  //       builder: (context, snapshot) {
+  //         if (snapshot.hasData) {
+  //           return const HomePage();
+  //         } else if (snapshot.hasError) {
+  //           return const Center(child: Text('Error'));
+  //         } else {
+  //           return const LoginForm();
+  //         }
+  //       },
+  //     ),
   '/splash': (context) => const SplashScreen(),
   '/auth': (context) => const LoginForm(),
   '/home': (context) => const HomePage(),
-  '/camera': (context) => CameraPage(),
+  '/camera': (context) => const CameraPage(),
   '/settings': (context) => const SettingsPage(),
   '/profile': (context) => const ProfilePage(),
-  '/map': (context) => Maps(),
+  '/map': (context) => const Maps(),
   '/introScreens': (context) => const IntroScreens(),
   '/donate': (context) => const Donate(),
   '/contact': (context) => const Contact(),

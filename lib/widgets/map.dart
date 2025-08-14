@@ -660,32 +660,56 @@ class _MapsState extends State<Maps>
           location: Provider.of<MapProvider>(context, listen: false).location ??
               LatLng(0, 0),
           onServe: () async {
-            final mapProvider =
-                Provider.of<MapProvider>(context, listen: false);
-            final updatedMarkers = mapProvider.markers
-                .where((marker) => marker.point != markerLocation)
-                .toList();
-            mapProvider.setMarkers(updatedMarkers);
+            try {
+              // First close the bottom sheet
+              Navigator.pop(context);
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Row(
-                  children: [
-                    Icon(Icons.favorite, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text('Thank you for helping!'),
-                  ],
-                ),
-                backgroundColor: Colors.green,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-            );
+              // Show loading indicator
+              // ScaffoldMessenger.of(context).showSnackBar(
+              //   const SnackBar(
+              //     content: Text('Removing pin...'),
+              //     duration: Duration(seconds: 1),
+              //   ),
+              // );
 
-            await markerDoc.reference.delete();
-            await loadMarkers();
-            Navigator.pop(context);
+              // Remove from Firestore
+              await markerDoc.reference.delete();
+
+              // Update local state
+              final mapProvider =
+                  Provider.of<MapProvider>(context, listen: false);
+              final updatedMarkers = mapProvider.markers
+                  .where((marker) => marker.point != markerLocation)
+                  .toList();
+              mapProvider.setMarkers(updatedMarkers);
+
+              // Show success message
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('Thank you for helping!'),
+                      ],
+                    ),
+                    backgroundColor: Colors.green,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            } catch (e) {
+              print('Error removing pin: $e');
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error removing pin: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            }
           },
         );
       },
