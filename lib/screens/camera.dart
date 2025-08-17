@@ -91,6 +91,7 @@ class _CameraPageState extends State<CameraPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: Text('Camera')),
       backgroundColor: KMTheme.of(context).primaryBackground,
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
@@ -98,40 +99,48 @@ class _CameraPageState extends State<CameraPage> {
           if (snapshot.connectionState == ConnectionState.done) {
             return Stack(
               fit: StackFit.expand,
+              alignment: Alignment.center,
               children: [
-                // Camera preview with Hero
                 Hero(
-                  tag: 'camera_preview',
-                  child: CameraPreview(_controller),
-                ),
-
-                // App bar with back button
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: AppBar(
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    leading: Hero(
-                      tag: 'camera_icon',
-                      child: IconButton(
-                        icon: Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.pop(context),
+                  tag: 'camera-preview-to-pin',
+                  flightShuttleBuilder: (flightContext, animation,
+                      flightDirection, fromHeroContext, toHeroContext) {
+                    final scaleAnimation =
+                        Tween<double>(begin: 1.0, end: 0.5).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.fastOutSlowIn,
                       ),
-                    ),
+                    );
+
+                    return AnimatedBuilder(
+                      animation: animation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: scaleAnimation.value,
+                          child: Opacity(
+                            opacity: Curves.easeInOutCubic
+                                .transform(animation.value),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: fromHeroContext.widget,
+                    );
+                  },
+                  child: SizedBox(
+                    height: 400,
+                    width: 400,
+                    child: CameraPreview(_controller),
                   ),
                 ),
-
-                // Camera controls
                 Positioned(
                   bottom: 80,
-                  left: 0,
-                  right: 0,
                   child: Hero(
-                    tag: 'pin_button',
+                    tag: 'pin',
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      spacing: 20,
                       children: [
                         ValueListenableBuilder<bool>(
                           valueListenable: _isTorchOn,
@@ -211,7 +220,7 @@ class _CameraPageState extends State<CameraPage> {
               ],
             );
           } else {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator());
           }
         },
       ),

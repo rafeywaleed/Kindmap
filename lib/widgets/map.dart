@@ -404,6 +404,30 @@ class _MapsState extends State<Maps>
     }
   }
 
+  void _moveToMarker(LatLng markerLocation) {
+    // Get screen size from MediaQuery
+    final screenSize = MediaQuery.of(context).size;
+
+    // Calculate how much to offset (about 30% of screen height)
+    const offsetFraction = 0.3;
+    final offsetPixels = screenSize.height * offsetFraction;
+
+    // Convert pixel offset to geographic coordinates
+    final camera = _mapController.camera;
+    final visibleBounds = camera.visibleBounds;
+    final latDiff = visibleBounds.north - visibleBounds.south;
+    final offsetDegrees = (offsetPixels / screenSize.height) * latDiff;
+
+    // Calculate the new center point
+    final newCenter = LatLng(
+      markerLocation.latitude - offsetDegrees,
+      markerLocation.longitude,
+    );
+
+    // Move the map
+    _mapController.move(newCenter, camera.zoom);
+  }
+
   Future<void> _moveToCurrentLocation() async {
     HapticFeedback.lightImpact();
     _fabAnimationController.forward().then((_) {
@@ -643,7 +667,11 @@ class _MapsState extends State<Maps>
       _selectedMarkerLocation = markerLocation;
     });
 
+    HapticFeedback.selectionClick();
+
     _markerAnimationController.forward();
+
+    _moveToMarker(markerLocation);
 
     showModalBottomSheet(
       context: context,
@@ -661,17 +689,6 @@ class _MapsState extends State<Maps>
               LatLng(0, 0),
           onServe: () async {
             try {
-              // First close the bottom sheet
-              Navigator.pop(context);
-
-              // Show loading indicator
-              // ScaffoldMessenger.of(context).showSnackBar(
-              //   const SnackBar(
-              //     content: Text('Removing pin...'),
-              //     duration: Duration(seconds: 1),
-              //   ),
-              // );
-
               // Remove from Firestore
               await markerDoc.reference.delete();
 
@@ -699,6 +716,9 @@ class _MapsState extends State<Maps>
                   ),
                 );
               }
+
+              // Close the bottom sheet AFTER removing marker
+              Navigator.pop(context);
             } catch (e) {
               print('Error removing pin: $e');
               if (context.mounted) {

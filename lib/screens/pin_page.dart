@@ -18,6 +18,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/screens/auth_pages.dart/auth_screen.dart';
+import 'package:kindmap/screens/homescreen.dart';
 import 'package:kindmap/screens/pin_confirmation.dart';
 import 'package:kindmap/services/get_cell_info.dart';
 
@@ -347,7 +348,19 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   }
 
   Future<String> getAccessToken() async {
-    final serviceAccountCredentials = ServiceAccountCredentials.fromJson({});
+    final serviceAccountCredentials = ServiceAccountCredentials.fromJson({
+      'type': dotenv.env['type'],
+      'project_id': dotenv.env['project_id'],
+      'private_key_id': dotenv.env['private_key_id'],
+      'private_key': dotenv.env['private_key'],
+      'client_email': dotenv.env['client_email'],
+      'client_id': dotenv.env['client_id'],
+      'auth_uri': dotenv.env['auth_uri'],
+      'token_uri': dotenv.env['token_uri'],
+      'auth_provider_x509_cert_url': dotenv.env['auth_provider_x509_cert_url'],
+      'client_x509_cert_url': dotenv.env['client_x509_cert_url'],
+      'universe_domain': dotenv.env['universe_domain'],
+    });
 
     final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
 
@@ -367,7 +380,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   }
 
   Future<void> getDotnev() async {
-    await dotenv.load(fileName: ".env");
+    await dotenv.load(fileName: '.env');
   }
 
   @override
@@ -940,9 +953,9 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                             print("CellName: $cellName");
                             await sendNotification(cellName);
                             print("docname: $docName");
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) => PinConfirmation(
-                                    cellId: cellId, docName: docName)));
+                            Navigator.of(context).pushReplacement(
+                                MaterialPageRoute(
+                                    builder: (context) => HomePage()));
                           },
                           text: 'Pin',
                           icon: Icon(Icons.pin_drop,
