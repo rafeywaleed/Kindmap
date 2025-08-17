@@ -17,11 +17,25 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+class _HomePageState extends State<HomePage>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // Now this works!
     _initializeApp();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Optionally, override lifecycle methods if needed:
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // handle lifecycle changes if needed
   }
 
   Future<void> _initializeApp() async {

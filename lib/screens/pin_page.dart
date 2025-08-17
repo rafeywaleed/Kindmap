@@ -21,6 +21,7 @@ import 'package:kindmap/screens/auth_pages.dart/auth_screen.dart';
 import 'package:kindmap/screens/homescreen.dart';
 import 'package:kindmap/screens/pin_confirmation.dart';
 import 'package:kindmap/services/get_cell_info.dart';
+import 'package:kindmap/widgets/animated_pin_button.dart';
 
 import 'package:latlong2/latlong.dart';
 
@@ -216,6 +217,9 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   String? url;
   late String cellId;
   late String docName;
+  bool _isPinning = false;
+  late AnimationController _pinAnimController;
+  late Animation<double> _pinCollapseAnim;
 
   Future<Position> _determinePosition() async {
     bool serviceEnabled;
@@ -303,11 +307,11 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
       await sendNotification(topic);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pin created successfully')));
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(content: Text('Pin created successfully')));
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error creating pin: $e')));
+      // ScaffoldMessenger.of(context)
+      //     .showSnackBar(SnackBar(content: Text('Error creating pin: $e')));
     }
   }
 
@@ -377,6 +381,14 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     getLocation();
     getDotnev();
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
+    _pinAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _pinCollapseAnim = CurvedAnimation(
+      parent: _pinAnimController,
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   Future<void> getDotnev() async {
@@ -385,6 +397,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _pinAnimController.dispose();
     unfocusNode.dispose();
     textController1.dispose();
     textController2.dispose();
@@ -927,61 +940,17 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-              Hero(
-                tag: 'pin_button',
-                child: Container(
-                  width: double.infinity,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: KMTheme.of(context).primaryBackground,
-                  ),
-                  alignment: const AlignmentDirectional(0, 0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      Padding(
-                        padding:
-                            const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 0),
-                        child: CustomButton(
-                          onPressed: () async {
-                            await uploadImage();
-                            // Get cell info for topic
-                            final cellInfo = getCellInfo(
-                                location.latitude, location.longitude);
-                            final cellName = cellInfo['topic'];
-                            print("CellInfo: $cellInfo");
-                            print("CellName: $cellName");
-                            await sendNotification(cellName);
-                            print("docname: $docName");
-                            Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(
-                                    builder: (context) => HomePage()));
-                          },
-                          text: 'Pin',
-                          icon: Icon(Icons.pin_drop,
-                              color: KMTheme.of(context).primaryText, size: 18),
-                          width: double.infinity,
-                          height: 50,
-                          padding:
-                              const EdgeInsetsDirectional.fromSTEB(0, 0, 0, 0),
-                          iconPadding:
-                              const EdgeInsetsDirectional.fromSTEB(0, 0, 5, 0),
-                          color: KMTheme.of(context).secondary,
-                          textStyle: KMTheme.of(context).titleSmall.copyWith(
-                                fontFamily: 'Plus Jakarta Sans',
-                                color: KMTheme.of(context).primaryText,
-                                fontWeight: FontWeight.bold,
-                              ),
-                          borderSide: const BorderSide(
-                            color: Colors.transparent,
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              AnimatedPinButton(
+                onPressed: () async {
+                  await uploadImage();
+                  final cellInfo =
+                      getCellInfo(location.latitude, location.longitude);
+                  final cellName = cellInfo['topic'];
+                  await sendNotification(cellName);
+                },
+                text: 'Pin',
+                icon: Icons.pin_drop,
+              )
             ],
           ),
         ),

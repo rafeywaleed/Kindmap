@@ -32,6 +32,7 @@ dependencies:
   cached_network_image: ^3.4.1
   camera: ^0.11.0+2
   cloud_firestore: ^5.6.11
+  confetti: ^0.8.0
   connectivity_plus: ^6.1.5
   cupertino_icons: ^1.0.8
   firebase_auth: ^5.6.2
