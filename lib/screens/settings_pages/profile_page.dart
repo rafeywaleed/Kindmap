@@ -151,74 +151,47 @@ class _ProfilePageState extends State<ProfilePage> {
                 Row(
                   mainAxisSize: MainAxisSize.max,
                   children: [
-                    Expanded(
-                        flex: 2,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: GestureDetector(
-                            onDoubleTap: () async {
-                              bool? confirm = await showDialog(
-                                context: context,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    title: Text('Change Avatar?'),
-                                    content: Text(
-                                        'Do you want to change your avatar?'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(false),
-                                        child: Text('No'),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(true),
-                                        child: Text('Yes'),
-                                      ),
-                                    ],
-                                  );
-                                },
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: GestureDetector(
+                        onDoubleTap: () async {
+                          bool? confirm = await showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Text('Change Avatar?'),
+                                content:
+                                    Text('Do you want to change your avatar?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(false),
+                                    child: Text('No'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(true),
+                                    child: Text('Yes'),
+                                  ),
+                                ],
                               );
-
-                              if (confirm == true) {
-                                // Navigate to the avatars page
-                                Navigator.of(context).pushNamed('/avatars');
-                              }
                             },
-                            child: Container(
-                              width: size.width * 0.4,
-                              height: size.width * 0.4,
-                              clipBehavior: Clip.antiAlias,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                              ),
-                              child: StreamBuilder(
-                                stream: FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(FirebaseAuth.instance.currentUser?.uid)
-                                    .snapshots(),
-                                builder: ((context, snapshot) {
-                                  if (snapshot.hasData) {
-                                    int? avatarIndex =
-                                        snapshot.data?['avatarIndex'];
-                                    return FittedBox(
-                                        child: Image.asset(
-                                            'assets/images/avatar${avatarIndex}.png'));
-                                  }
-                                  return const Center(
-                                      child: LinearProgressIndicator());
-                                }),
-                              ),
+                          );
+
+                          if (confirm == true) {
+                            // Navigate to the avatars page
+                            Navigator.of(context).pushNamed('/avatars');
+                          }
+                        },
+                        child: Hero(
+                          tag: 'profileAvatar',
+                          child: Container(
+                            width: size.width * 0.3,
+                            height: size.width * 0.3,
+                            clipBehavior: Clip.antiAlias,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
                             ),
-                          ),
-                        )),
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsetsDirectional.fromSTEB(
-                                8, 8, 8, 4),
                             child: StreamBuilder(
                               stream: FirebaseFirestore.instance
                                   .collection('users')
@@ -226,52 +199,77 @@ class _ProfilePageState extends State<ProfilePage> {
                                   .snapshots(),
                               builder: ((context, snapshot) {
                                 if (snapshot.hasData) {
+                                  int? avatarIndex =
+                                      snapshot.data?['avatarIndex'];
                                   return FittedBox(
-                                    child: Text(
-                                      snapshot.data!['name'],
-                                      style: KMTheme.of(context)
-                                          .bodyMedium
-                                          .copyWith(
-                                            fontFamily: 'Readex Pro',
-                                            fontSize: 20,
-                                            letterSpacing: 0,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                    ),
-                                  );
+                                      child: Image.asset(
+                                          'assets/images/avatar${avatarIndex}.png'));
                                 }
                                 return const Center(
                                     child: LinearProgressIndicator());
                               }),
                             ),
                           ),
-                          Align(
-                            alignment: const AlignmentDirectional(-1, 0),
-                            child: StreamBuilder(
-                                stream: FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(FirebaseAuth.instance.currentUser?.uid)
-                                    .snapshots(),
-                                builder: ((context, snapshot) {
-                                  if (snapshot.hasData) {
-                                    return Center(
-                                      child: Text(
-                                        snapshot.data!['email'],
-                                        style: KMTheme.of(context)
-                                            .bodyMedium
-                                            .copyWith(
-                                              fontFamily: 'Readex Pro',
-                                              letterSpacing: 0,
-                                            ),
-                                      ),
-                                    );
-                                  }
-                                  return const Center(
-                                      child: CircularProgressIndicator());
-                                })),
-                          ),
-                        ],
+                        ),
                       ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding:
+                              const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 4),
+                          child: StreamBuilder(
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(FirebaseAuth.instance.currentUser?.uid)
+                                .snapshots(),
+                            builder: ((context, snapshot) {
+                              if (snapshot.hasData) {
+                                return FittedBox(
+                                  child: Text(
+                                    snapshot.data!['name'],
+                                    style:
+                                        KMTheme.of(context).bodyMedium.copyWith(
+                                              fontFamily: 'Readex Pro',
+                                              fontSize: 20,
+                                              letterSpacing: 0,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                  ),
+                                );
+                              }
+                              return const Center(
+                                  child: LinearProgressIndicator());
+                            }),
+                          ),
+                        ),
+                        Align(
+                          alignment: const AlignmentDirectional(-1, 0),
+                          child: StreamBuilder(
+                              stream: FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(FirebaseAuth.instance.currentUser?.uid)
+                                  .snapshots(),
+                              builder: ((context, snapshot) {
+                                if (snapshot.hasData) {
+                                  return Center(
+                                    child: Text(
+                                      snapshot.data!['email'],
+                                      style: KMTheme.of(context)
+                                          .bodyMedium
+                                          .copyWith(
+                                            fontFamily: 'Readex Pro',
+                                            letterSpacing: 0,
+                                          ),
+                                    ),
+                                  );
+                                }
+                                return const Center(
+                                    child: CircularProgressIndicator());
+                              })),
+                        ),
+                      ],
                     ),
                   ],
                 ),

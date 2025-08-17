@@ -391,55 +391,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     showFollowBox("linkedin");
                   },
                 ),
-                ...[
-                  SocialMediaIconButton(
-                    borderColor: KMTheme.of(context).alternate,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    buttonSize: 48,
-                    fillColor: KMTheme.of(context).secondaryBackground,
-                    icon: FaIcon(
-                      FontAwesomeIcons.instagram,
-                      color: KMTheme.of(context).secondaryText,
-                      size: 24,
-                    ),
-                    onPressed: () {
-                      showFollowBox("instagram");
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  SocialMediaIconButton(
-                    borderColor: KMTheme.of(context).alternate,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    buttonSize: 48,
-                    fillColor: KMTheme.of(context).secondaryBackground,
-                    icon: FaIcon(
-                      FontAwesomeIcons.facebookF,
-                      color: KMTheme.of(context).secondaryText,
-                      size: 24,
-                    ),
-                    onPressed: () {
-                      showFollowBox("facebook");
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  SocialMediaIconButton(
-                    borderColor: KMTheme.of(context).alternate,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    buttonSize: 48,
-                    fillColor: KMTheme.of(context).secondaryBackground,
-                    icon: FaIcon(
-                      FontAwesomeIcons.linkedin,
-                      color: KMTheme.of(context).secondaryText,
-                      size: 24,
-                    ),
-                    onPressed: () {
-                      showFollowBox("linkedin");
-                    },
-                  ),
-                ],
               ],
             ),
           ),

@@ -1,19 +1,12 @@
-import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:kindmap/config/app_theme.dart';
-import 'package:kindmap/main.dart';
 import 'package:kindmap/services/permission_services.dart';
 import 'package:kindmap/services/theme_services.dart' show ThemeProvider;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-
-import '../models/latlong.dart';
 import '../widgets/map.dart';
 import '../widgets/pin_someone.dart';
 
@@ -38,17 +31,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<void> _requestPermissions() async {
     // Request location permission
-    final hasLocationPermission =
-        await PermissionService.handleLocationPermission();
-    if (!hasLocationPermission) {
-      if (mounted) {
-        _showPermissionDialog(
-          'Location Access Required',
-          'KindMap needs location access to show nearby help requests. Please enable location access in settings.',
-          'location',
-        );
-      }
-    }
+    // final hasLocationPermission =
+    //     await PermissionService.handleLocationPermission();
+    // if (!hasLocationPermission) {
+    //   if (mounted) {
+    //     _showPermissionDialog(
+    //       'Location Access Required',
+    //       'KindMap needs location access to show nearby help requests. Please enable location access in settings.',
+    //       'location',
+    //     );
+    //   }
+    // }
 
     // Request notification permission
     final hasNotificationPermission =
@@ -144,42 +137,78 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: Column(
                       mainAxisSize: MainAxisSize.max,
                       children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            color: KMTheme.of(context).primaryBackground,
-                            boxShadow: const [
-                              BoxShadow(
-                                blurRadius: 0,
-                                color: Color(0x33000000),
-                                offset: Offset(
-                                  4,
-                                  4,
-                                ),
-                              )
-                            ],
-                            borderRadius: const BorderRadius.only(
-                              bottomLeft: Radius.circular(0),
-                              bottomRight: Radius.circular(0),
-                              topLeft: Radius.circular(10),
-                              topRight: Radius.circular(0),
+                        GestureDetector(
+                          onDoubleTap: () =>
+                              Navigator.of(context).pushNamed('/profile'),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: KMTheme.of(context).primaryBackground,
+                              boxShadow: const [
+                                BoxShadow(
+                                  blurRadius: 0,
+                                  color: Color(0x33000000),
+                                  offset: Offset(
+                                    4,
+                                    4,
+                                  ),
+                                )
+                              ],
+                              borderRadius: const BorderRadius.only(
+                                bottomLeft: Radius.circular(0),
+                                bottomRight: Radius.circular(0),
+                                topLeft: Radius.circular(10),
+                                topRight: Radius.circular(0),
+                              ),
                             ),
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.max,
-                            children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.max,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(14),
-                                    child: Container(
-                                      width: size.width * 0.3,
-                                      height: size.width * 0.3,
-                                      clipBehavior: Clip.antiAlias,
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.max,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.max,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(14),
+                                      child: Container(
+                                        width: size.width * 0.3,
+                                        height: size.width * 0.3,
+                                        clipBehavior: Clip.antiAlias,
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: StreamBuilder(
+                                          stream: FirebaseFirestore.instance
+                                              .collection('users')
+                                              .doc(FirebaseAuth
+                                                  .instance.currentUser?.uid)
+                                              .snapshots(),
+                                          builder: ((context, snapshot) {
+                                            if (snapshot.hasData &&
+                                                snapshot.data?.data() != null) {
+                                              final data =
+                                                  snapshot.data!.data()!;
+                                              int? avatarIndex =
+                                                  data['avatarIndex'];
+                                              return FittedBox(
+                                                child: Image.asset(
+                                                    'assets/images/avatar${avatarIndex ?? 0}.png'),
+                                              );
+                                            }
+                                            return const Center(
+                                                child:
+                                                    LinearProgressIndicator());
+                                          }),
+                                        ),
                                       ),
-                                      child: StreamBuilder(
+                                    ),
+                                  ],
+                                ),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsetsDirectional.fromSTEB(
+                                            10, 0, 10, 10),
+                                    child: StreamBuilder(
                                         stream: FirebaseFirestore.instance
                                             .collection('users')
                                             .doc(FirebaseAuth
@@ -189,58 +218,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                           if (snapshot.hasData &&
                                               snapshot.data?.data() != null) {
                                             final data = snapshot.data!.data()!;
-                                            int? avatarIndex =
-                                                data['avatarIndex'];
+                                            final name =
+                                                data['name'] ?? 'No Name';
                                             return FittedBox(
-                                              child: Image.asset(
-                                                  'assets/images/avatar${avatarIndex ?? 0}.png'),
-                                            );
+                                                child: Text(
+                                              name,
+                                              style: KMTheme.of(context)
+                                                  .bodyMedium
+                                                  .copyWith(
+                                                    fontFamily:
+                                                        'Plus Jakarta Sans',
+                                                    fontSize: 22.5,
+                                                    letterSpacing: 0,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                            ));
                                           }
                                           return const Center(
                                               child: LinearProgressIndicator());
-                                        }),
-                                      ),
-                                    ),
+                                        })),
                                   ),
-                                ],
-                              ),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Padding(
-                                  padding: const EdgeInsetsDirectional.fromSTEB(
-                                      10, 0, 10, 10),
-                                  child: StreamBuilder(
-                                      stream: FirebaseFirestore.instance
-                                          .collection('users')
-                                          .doc(FirebaseAuth
-                                              .instance.currentUser?.uid)
-                                          .snapshots(),
-                                      builder: ((context, snapshot) {
-                                        if (snapshot.hasData &&
-                                            snapshot.data?.data() != null) {
-                                          final data = snapshot.data!.data()!;
-                                          final name =
-                                              data['name'] ?? 'No Name';
-                                          return FittedBox(
-                                              child: Text(
-                                            name,
-                                            style: KMTheme.of(context)
-                                                .bodyMedium
-                                                .copyWith(
-                                                  fontFamily:
-                                                      'Plus Jakarta Sans',
-                                                  fontSize: 22.5,
-                                                  letterSpacing: 0,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                          ));
-                                        }
-                                        return const Center(
-                                            child: LinearProgressIndicator());
-                                      })),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         // Opacity(

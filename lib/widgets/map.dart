@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:kindmap/config/app_theme.dart';
 import 'package:kindmap/services/get_cell_info.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -154,10 +155,10 @@ class _MapsState extends State<Maps>
   }
 
   Future<void> _requestLocationPermission() async {
-    if (_locationPermission == LocationPermission.deniedForever) {
-      _showPermissionDeniedDialog();
-      return;
-    }
+    // if (_locationPermission == LocationPermission.deniedForever) {
+    //   _showPermissionDeniedDialog();
+    //   return;
+    // }
 
     final permission = await Geolocator.requestPermission();
     setState(() {
@@ -287,25 +288,33 @@ class _MapsState extends State<Maps>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: KMTheme.of(context).primaryBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
-              child: const Icon(Icons.location_disabled,
-                  color: Colors.red, size: 24),
+              padding: const EdgeInsets.all(6),
+              child: const Icon(Icons.location_disabled, color: Colors.red),
             ),
             const SizedBox(width: 12),
-            const Text('Location Services Disabled'),
+            const Expanded(
+              child: Text(
+                'Location Services Disabled',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
           ],
         ),
         content: const Text(
           'Please enable location services to show your current position on the map.',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(fontSize: 15),
         ),
         actions: [
           TextButton(
@@ -314,12 +323,10 @@ class _MapsState extends State<Maps>
           ),
           ElevatedButton.icon(
             icon: const Icon(Icons.settings, size: 18),
-            label: const Text('Enable Location'),
+            label: const Text('Enable'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
             ),
             onPressed: () async {
@@ -741,55 +748,41 @@ class _MapsState extends State<Maps>
     });
   }
 
-  Widget _buildLocationMarker() {
-    // Only show marker if we have current location and location is enabled
-    if (!_locationServiceEnabled ||
-        !_hasLocationPermission ||
-        _currentLocation == null) {
-      return const SizedBox.shrink();
-    }
-
-    return AnimatedBuilder(
-      animation: _pulseAnimation,
-      builder: (context, child) {
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            // Pulse ring for current location
-            Container(
-              width: 60 * _pulseAnimation.value,
-              height: 60 * _pulseAnimation.value,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.blue
-                    .withOpacity(0.3 - (_pulseAnimation.value - 0.8) * 0.5),
+  Widget _buildLocationMarker(
+      {required LatLng location, required Color color}) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color.withOpacity(0.2),
+          ),
+        ),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: color,
+            border: Border.all(color: Colors.white, width: 3),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-            ),
-            // Main location icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.blue,
-                border: Border.all(color: Colors.white, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.my_location,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-          ],
-        );
-      },
+            ],
+          ),
+          child: const Icon(
+            Icons.my_location,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+      ],
     );
   }
 
@@ -839,7 +832,20 @@ class _MapsState extends State<Maps>
                         point: _currentLocation!,
                         width: 80,
                         height: 80,
-                        child: _buildLocationMarker(),
+                        child: _buildLocationMarker(
+                          location: _currentLocation!,
+                          color: Colors.blue,
+                        ),
+                      )
+                    else if (_lastKnownLocation != null)
+                      Marker(
+                        point: _lastKnownLocation!,
+                        width: 80,
+                        height: 80,
+                        child: _buildLocationMarker(
+                          location: _lastKnownLocation!,
+                          color: Colors.grey,
+                        ),
                       ),
                     ...mapProvider.markers,
                   ],
