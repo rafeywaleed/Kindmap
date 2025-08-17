@@ -51,12 +51,22 @@ class _PinBoxState extends State<PinBox> {
   }
 
   Future<void> _navigateToLocation() async {
-    final url =
-        'https://www.google.com/maps/dir/?api=1&destination=${widget.latitude},${widget.longitude}';
-    if (await canLaunch(url)) {
-      await launch(url);
+    Uri url = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${widget.latitude},${widget.longitude}',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
-      print('Could not launch $url');
+      url = Uri.parse(
+          'https://www.google.com/maps/dir//${widget.latitude},${widget.longitude}/@${widget.latitude},${widget.longitude}');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch maps')),
+        );
+      }
     }
   }
 
