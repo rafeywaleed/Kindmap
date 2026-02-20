@@ -1,30 +1,20 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'dart:io';
 import 'dart:convert';
-import 'dart:math';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
 import 'package:googleapis_auth/auth_io.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
-
-import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-
 import 'package:geolocator/geolocator.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:kindmap/screens/auth_pages.dart/auth_screen.dart';
-import 'package:kindmap/screens/homescreen.dart';
-import 'package:kindmap/screens/pin_confirmation.dart';
-import 'package:kindmap/services/get_cell_info.dart';
-import 'package:kindmap/widgets/animated_pin_button.dart';
-
 import 'package:latlong2/latlong.dart';
 
+import '../controllers/pin_controller.dart';
+import '../models/pin_model.dart';
+import '../services/get_cell_info.dart';
+import '../widgets/animated_pin_button.dart';
 import '../config/app_theme.dart';
 
 // Custom IconButton to replace FlutterFlowIconButton
@@ -38,7 +28,7 @@ class CustomIconButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   const CustomIconButton({
-    Key? key,
+    super.key,
     required this.borderColor,
     required this.borderRadius,
     required this.borderWidth,
@@ -46,7 +36,7 @@ class CustomIconButton extends StatelessWidget {
     required this.fillColor,
     required this.icon,
     required this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +73,7 @@ class CustomButton extends StatelessWidget {
   final BorderSide borderSide;
 
   const CustomButton({
-    Key? key,
+    super.key,
     required this.onPressed,
     required this.text,
     this.icon,
@@ -94,7 +84,7 @@ class CustomButton extends StatelessWidget {
     required this.color,
     required this.textStyle,
     required this.borderSide,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -136,10 +126,10 @@ class AnimatedEntryContainer extends StatefulWidget {
   final bool isLoading;
 
   const AnimatedEntryContainer({
-    Key? key,
+    super.key,
     required this.child,
     this.isLoading = false,
-  }) : super(key: key);
+  });
 
   @override
   State<AnimatedEntryContainer> createState() => _AnimatedEntryContainerState();
@@ -212,15 +202,17 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   final FocusNode textFieldFocusNode1 = FocusNode();
   final FocusNode textFieldFocusNode2 = FocusNode();
   String? dropDownValue;
-  late LatLng location;
-  final db = FirebaseFirestore.instance;
   String? url;
-  late String cellId;
-  late String docName;
-  bool _isPinning = false;
-  late AnimationController _pinAnimController;
-  late Animation<double> _pinCollapseAnim;
+  bool _isLoading = false;
 
+  LatLng? location;
+  String? cellId;
+  String? pinId;
+  // bool _isPinning = false;
+  late Animation<double> _pinCollapseAnim;
+  late AnimationController _pinAnimController;
+
+  /*
   Future<Position> _determinePosition() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -246,6 +238,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     return await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
   }
+  */
 
   Future<void> getLocation() async {
     try {
@@ -264,54 +257,59 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
         location = LatLng(temp.latitude, temp.longitude);
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Failed to get location: $e'),
-      ));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to get location: $e')));
+      }
     }
   }
 
   Future uploadImage() async {
     try {
-      print("ImagePath: ${widget.imagePath}");
+      final userId = FirebaseAuth.instance.currentUser?.uid;
       final base64Image = await _compressAndConvertImage(widget.imagePath);
       debugPrint("Base64Image: $base64Image");
-      final cellInfo = getCellInfo(location.latitude, location.longitude);
+      final cellInfo = getCellInfo(location!.latitude, location!.longitude);
       final cellId = cellInfo['cellId'];
       final topic = cellInfo['topic'];
+      final pinId = '${userId}_${DateTime.now().millisecondsSinceEpoch}';
+      final timerValue = dropDownValue != null
+          ? int.tryParse(dropDownValue!.replaceAll(RegExp(r'[^0-9]'), '')) ?? 3
+          : 3;
 
-      final pinRef = FirebaseFirestore.instance
-          .collection('pins')
-          .doc(cellId)
-          .collection('markers')
-          .doc();
+      setState(() => _isLoading = true);
 
-      final pinData = {
-        'id': pinRef.id,
-        'latitude': location.latitude,
-        'longitude': location.longitude,
-        'note': textController1.text.isEmpty ? '(none)' : textController1.text,
-        'details':
-            textController2.text.isEmpty ? '(none)' : textController2.text,
-        'timer': dropDownValue ?? '3 hr',
-        'imageBase64': base64Image,
-        'createdAt': FieldValue.serverTimestamp(),
-        'grid': cellId,
-      };
+      final pin = Pin(
+        pinId: pinId,
+        gridId: cellId,
+        createdAt: DateTime.now(),
+        details: textController2.text.trim().isEmpty
+            ? ''
+            : textController2.text.trim(),
+        note: textController1.text.trim().isEmpty
+            ? ''
+            : textController1.text.trim(),
+        latitude: location!.latitude,
+        longitude: location!.longitude,
+        imageBase64: base64Image,
+        timer: timerValue,
+        createdBy: userId,
+      );
 
-      await pinRef.set(pinData);
+      await PinController().addPin(pin);
 
       setState(() {
         this.cellId = cellId;
-        docName = pinRef.id;
+        this.pinId = pinId;
       });
 
       await sendNotification(topic);
 
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //     const SnackBar(content: Text('Pin created successfully')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pin created successfully')));
     } catch (e) {
-      // ScaffoldMessenger.of(context)
-      //     .showSnackBar(SnackBar(content: Text('Error creating pin: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error creating pin: $e')));
     }
   }
 
@@ -344,10 +342,10 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
       headers: headers,
       body: jsonEncode(body),
     );
-    if (response.statusCode == 200) {
-      print('Notification sent successfully to topic: $topic');
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      debugPrint('Notification sent successfully to topic: $topic');
     } else {
-      print('Error sending notification: ${response.body}');
+      debugPrint('Error sending notification: ${response.body}');
     }
   }
 
@@ -420,7 +418,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
       return base64Encode(compressed);
     } catch (e) {
-      print('Error compressing image: $e');
+      debugPrint('Error compressing image: $e');
       final bytes = await File(imagePath).readAsBytes();
       return base64Encode(bytes);
     }
@@ -488,7 +486,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                                       size: 20,
                                     ),
                                     onPressed: () {
-                                      print('IconButton pressed ...');
+                                      debugPrint('IconButton pressed ...');
                                     },
                                   ),
                                 ],
@@ -899,7 +897,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                                                     });
                                                   },
                                                   items: <String>[
-                                                    'Default (3 hrs)',
+                                                    '3 hr',
                                                     '1 hr',
                                                     '5 hr',
                                                     '10 hr',
@@ -944,7 +942,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                 onPressed: () async {
                   await uploadImage();
                   final cellInfo =
-                      getCellInfo(location.latitude, location.longitude);
+                      getCellInfo(location!.latitude, location!.longitude);
                   final cellName = cellInfo['topic'];
                   await sendNotification(cellName);
                 },

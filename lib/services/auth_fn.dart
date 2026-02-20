@@ -1,12 +1,11 @@
-// ignore_for_file: use_build_context_synchronously
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+import '../controllers/user_controller.dart';
+import '../models/user_model.dart';
 // import 'package:kindmap/new_Auth/firebase_fn.dart';
-import 'package:kindmap/services/firebase_fn.dart';
 
 // class AuthServices {
 //   static signupUser(
@@ -57,14 +56,36 @@ class AuthServices {
   static Future<void> signupUser(
       String email, String password, String name, BuildContext context) async {
     try {
-      UserCredential userCredential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(email: email, password: password);
-      await FirebaseAuth.instance.currentUser!.updateDisplayName(name);
-      await FirebaseAuth.instance.currentUser!.updateEmail(email);
-      await FirestoreServices.saveUser(name, email, userCredential.user!.uid);
+      if (FirebaseAuth.instance.currentUser != null) {
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        await UserController().addUser(User(
+            userId: FirebaseAuth.instance.currentUser!.uid,
+            name: name,
+            email: email,
+            joinedDate: DateTime.now(),
+            avatarIndex: 1,
+            helped: 0,
+            token: fcmToken ?? '',
+            subscribedGridIds: []));
+      } else {
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(email: email, password: password);
+        await FirebaseAuth.instance.currentUser!.updateDisplayName(name);
+        await FirebaseAuth.instance.currentUser!.updateEmail(email);
+        // await FirestoreServices.saveUser(name, email, userCredential.user!.uid);
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        await UserController().addUser(User(
+            userId: userCredential.user!.uid,
+            name: name,
+            email: email,
+            joinedDate: DateTime.now(),
+            avatarIndex: 1,
+            helped: 0,
+            token: fcmToken ?? '',
+            subscribedGridIds: []));
+      }
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Registration Successful')));
-
       // Navigate to IntroScreens after successful sign-up
       Navigator.pushReplacementNamed(context, '/introScreens');
     } on FirebaseAuthException catch (e) {
@@ -74,6 +95,18 @@ class AuthServices {
       } else if (e.code == 'email-already-in-use') {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Email Provided already Exists')));
+        UserCredential userCredential = await FirebaseAuth.instance
+            .signInWithEmailAndPassword(email: email, password: password);
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        await UserController().addUser(User(
+            userId: userCredential.user!.uid,
+            name: name,
+            email: email,
+            joinedDate: DateTime.now(),
+            avatarIndex: 1,
+            helped: 0,
+            token: fcmToken ?? '',
+            subscribedGridIds: []));
       }
     } catch (e) {
       ScaffoldMessenger.of(context)
@@ -86,12 +119,11 @@ class AuthServices {
     try {
       await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: email, password: password);
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser?.uid)
-          .update({
-        'token': await FirebaseMessaging.instance.getToken(),
-      });
+
+      String? fcmToken = await FirebaseMessaging.instance.getToken();
+      await UserController().updateFCMToken(
+          FirebaseAuth.instance.currentUser!.uid, fcmToken ?? '');
+
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('You are Logged in')));
 
@@ -126,7 +158,7 @@ class AuthServices {
   //   UserCredential userCredential =
   //       await FirebaseAuth.instance.signInWithCredential(credential);
 
-  //   //print(UserCredential.user?.displayName);
+  //   //debugPrint(UserCredential.user?.displayName);
   // }
 
   static Future<void> signInWithGoogle(BuildContext context) async {

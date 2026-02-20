@@ -52,25 +52,25 @@ class FollowBoxState extends State<FollowBox> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (widget.s_media == "instagram") ...[
-                    SocialTile(context, "Abdul Rafey Waleed", "instagram",
+                    socialTile(context, "Abdul Rafey Waleed", "instagram",
                         "https://www.instagram.com/rafeywaleed_a5"),
-                    SocialTile(context, "Mohammed Azim Moula", "instagram",
+                    socialTile(context, "Mohammed Azim Moula", "instagram",
                         "https://www.instagram.com/Azim"),
-                    SocialTile(context, "Syeda Arriyan Fatima", "instagram",
+                    socialTile(context, "Syeda Arriyan Fatima", "instagram",
                         "https://www.instagram.com/rArriyan"),
                   ] else if (widget.s_media == "facebook") ...[
-                    SocialTile(context, "Abdul Rafey Waleed", "facebook",
+                    socialTile(context, "Abdul Rafey Waleed", "facebook",
                         "https://www.facebook.com/rafeywaleed_a5"),
-                    SocialTile(context, "Mohammed Azim Moula", "facebook",
+                    socialTile(context, "Mohammed Azim Moula", "facebook",
                         "https://www.facebook.com/azimM"),
-                    SocialTile(context, "Syeda Arriyan Fatima", "facebook",
+                    socialTile(context, "Syeda Arriyan Fatima", "facebook",
                         "https://www.facebook.com/arriyanF"),
                   ] else ...[
-                    SocialTile(context, "Abdul Rafey Waleed", "linkedin",
+                    socialTile(context, "Abdul Rafey Waleed", "linkedin",
                         "https://www.linkedin.com/in/abdul-rafey-waleed-516052282/"),
-                    SocialTile(context, "Mohammed Azim Moula", "linkedin",
+                    socialTile(context, "Mohammed Azim Moula", "linkedin",
                         "https://www.linkedin.com/in/mohammed-azim-moula-7b07b4279/"),
-                    SocialTile(context, "Syeda Arriyan Fatima", "linkedin",
+                    socialTile(context, "Syeda Arriyan Fatima", "linkedin",
                         "https://www.linkedin.com/in/syeda-arriyan-fatima-a71346301/"),
                   ],
                 ],
@@ -119,7 +119,7 @@ class FollowBoxState extends State<FollowBox> {
 //                       if (itemSelected == null) return;
 //                       launch(itemSelected);
 //                     }),
-//                     print('IconButton pressed ...'),
+//                     debugPrint('IconButton pressed ...'),
 //                   }
 //                 else if (follow == 1)
 //                   {
@@ -156,7 +156,7 @@ class FollowBoxState extends State<FollowBox> {
 //                       if (itemSelected == null) return;
 //                       launch(itemSelected);
 //                     }),
-//                     print('IconButton pressed ...'),
+//                     debugPrint('IconButton pressed ...'),
 //                   }
 //                 else if (follow == 2)
 //                   {
@@ -199,5 +199,5 @@ class FollowBoxState extends State<FollowBox> {
 //                       if (itemSelected == null) return;
 //                       launch(itemSelected);
 //                     }),
-//                     print('IconButton pressed ...'),
+//                     debugPrint('IconButton pressed ...'),
 //                   }

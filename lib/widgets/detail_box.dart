@@ -1,92 +1,90 @@
 import 'dart:core';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:kindmap/config/app_theme.dart';
-// import 'package:kindmap/themes/kmTheme.dart';
+import 'package:kindmap/controllers/pin_controller.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import 'package:kindmap/widgets/base64_image.dart';
+
+import '../config/app_theme.dart';
+import 'base64_image.dart';
 // import 'Model_DetailBox.dart';
 // export 'Model_DetailBox.dart';
 
 class DetailBox extends StatefulWidget {
-  DetailBox({
+  const DetailBox({
     super.key,
     required this.cellId,
-    required this.docName,
+    required this.pinId,
     required this.location,
   });
 
-  String cellId;
-  String docName;
-  LatLng location;
+  final String cellId;
+  final String pinId;
+  final LatLng location;
 
   @override
   State<DetailBox> createState() => _DetailBoxState();
 }
 
 class _DetailBoxState extends State<DetailBox> {
+  LatLng? location;
+
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled don't continue
+      // accessing the position and request users of the
+      // App to enable the location services.
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        // Permissions are denied, next time you could try
+        // requesting permissions again (this is also where
+        // Android's shouldShowRequestPermissionRationale
+        // returned true. According to Android guidelines
+        // your App should show an explanatory UI now.
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      // Permissions are denied forever, handle appropriately.
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    // When we reach here, permissions are granted and we can
+    // continue accessing the position of the device.
+    return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+  }
+
+  Future getLocation() async {
+    await Geolocator.checkPermission();
+    await Geolocator.requestPermission();
+
+    Position temp = await _determinePosition();
+    setState(() {
+      location = LatLng(temp.latitude, temp.longitude);
+    });
+  }
+
+  @override
+  void initState() {
+    getLocation();
+    super.initState();
+  }
+
   @override
   Widget build(BuildContext context) {
-    LatLng? location;
-
-    Future<Position> _determinePosition() async {
-      bool serviceEnabled;
-      LocationPermission permission;
-
-      // Test if location services are enabled.
-      serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        // Location services are not enabled don't continue
-        // accessing the position and request users of the
-        // App to enable the location services.
-        return Future.error('Location services are disabled.');
-      }
-
-      permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          // Permissions are denied, next time you could try
-          // requesting permissions again (this is also where
-          // Android's shouldShowRequestPermissionRationale
-          // returned true. According to Android guidelines
-          // your App should show an explanatory UI now.
-          return Future.error('Location permissions are denied');
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        // Permissions are denied forever, handle appropriately.
-        return Future.error(
-            'Location permissions are permanently denied, we cannot request permissions.');
-      }
-
-      // When we reach here, permissions are granted and we can
-      // continue accessing the position of the device.
-      return await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-    }
-
-    Future getLocation() async {
-      await Geolocator.checkPermission();
-      await Geolocator.requestPermission();
-
-      Position temp = await _determinePosition();
-      setState(() {
-        location = LatLng(temp.latitude, temp.longitude);
-      });
-    }
-
-    @override
-    void initState() {
-      getLocation();
-      super.initState();
-    }
-
     var size = MediaQuery.of(context).size;
     return SingleChildScrollView(
       child: Container(
@@ -123,14 +121,9 @@ class _DetailBoxState extends State<DetailBox> {
               //     borderRadius: BorderRadius.circular(10),
               //   ),),
               StreamBuilder(
-                  stream: FirebaseFirestore.instance
-                      .collection('pins')
-                      .doc(widget.cellId)
-                      .collection('markers')
-                      .doc(widget.docName)
-                      .snapshots(),
+                  stream: PinController().streamPinById(widget.pinId),
                   builder: ((context, snapshot) {
-                    print(snapshot.data?['imageBase64']);
+                    debugPrint(snapshot.data!.imageBase64);
                     if (snapshot.hasData) {
                       return SizedBox(
                         width: size.width * 0.4,
@@ -138,7 +131,7 @@ class _DetailBoxState extends State<DetailBox> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
                           child: Base64Image(
-                            base64String: snapshot.data?['imageBase64'],
+                            base64String: snapshot.data!.imageBase64!,
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -156,17 +149,12 @@ class _DetailBoxState extends State<DetailBox> {
                       padding:
                           const EdgeInsetsDirectional.fromSTEB(20, 10, 10, 0),
                       child: StreamBuilder(
-                        stream: FirebaseFirestore.instance
-                            .collection('pins')
-                            .doc(widget.cellId)
-                            .collection('markers')
-                            .doc(widget.docName)
-                            .snapshots(),
+                        stream: PinController().streamPinById(widget.pinId),
                         builder: ((context, snapshot) {
                           if (snapshot.hasData) {
                             return FittedBox(
                               child: Text(
-                                '${Geolocator.distanceBetween(snapshot.data!['latitude'], snapshot.data!['longitude'], widget.location.latitude, widget.location.longitude).round()}ms away',
+                                '${Geolocator.distanceBetween(snapshot.data!.latitude, snapshot.data!.longitude, widget.location.latitude, widget.location.longitude).round()}ms away',
                                 style: KMTheme.of(context).bodyMedium.copyWith(
                                       fontFamily: 'Plus Jakarta Sans',
                                       fontSize: 22.5,
@@ -215,19 +203,14 @@ class _DetailBoxState extends State<DetailBox> {
                   child: Padding(
                     padding: const EdgeInsets.all(10),
                     child: StreamBuilder(
-                      stream: FirebaseFirestore.instance
-                          .collection('pins')
-                          .doc(widget.cellId)
-                          .collection('markers')
-                          .doc(widget.docName)
-                          .snapshots(),
+                      stream: PinController().streamPinById(widget.pinId),
                       builder: ((context, snapshot) {
                         if (snapshot.hasData) {
                           return Align(
                             alignment: Alignment.centerLeft,
                             child: FittedBox(
                               child: Text(
-                                'Note: ${snapshot.data!['note']}\n\nLocation Detail: ${snapshot.data!['details']}',
+                                'Note: ${snapshot.data!.note}\n\nLocation Detail: ${snapshot.data!.details}',
                                 style: KMTheme.of(context).bodyMedium.copyWith(
                                       fontFamily: 'Poppins',
                                       color: KMTheme.of(context).lineColor,

@@ -1,9 +1,11 @@
 import 'package:auto_size_text/auto_size_text.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../config/app_theme.dart';
+import '../../controllers/user_controller.dart';
+import '../../providers/profile_provider.dart';
 
 // Custom IconButton to replace FlutterFlowIconButton
 class CustomIconButton extends StatelessWidget {
@@ -16,7 +18,7 @@ class CustomIconButton extends StatelessWidget {
   final VoidCallback onPressed;
 
   const CustomIconButton({
-    Key? key,
+    super.key,
     required this.borderColor,
     required this.borderRadius,
     required this.borderWidth,
@@ -24,7 +26,7 @@ class CustomIconButton extends StatelessWidget {
     required this.fillColor,
     required this.icon,
     required this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +51,7 @@ class CustomIconButton extends StatelessWidget {
 }
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({Key? key}) : super(key: key);
+  const ProfilePage({super.key});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -107,6 +109,8 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
+    final ProfileProvider profile = context.watch<ProfileProvider>();
+
     return GestureDetector(
       onTap: () => unfocusNode.canRequestFocus
           ? FocusScope.of(context).requestFocus(unfocusNode)
@@ -159,26 +163,26 @@ class _ProfilePageState extends State<ProfilePage> {
                             context: context,
                             builder: (context) {
                               return AlertDialog(
-                                title: Text('Change Avatar?'),
-                                content:
-                                    Text('Do you want to change your avatar?'),
+                                title: const Text('Change Avatar?'),
+                                content: const Text(
+                                    'Do you want to change your avatar?'),
                                 actions: [
                                   TextButton(
                                     onPressed: () =>
                                         Navigator.of(context).pop(false),
-                                    child: Text('No'),
+                                    child: const Text('No'),
                                   ),
                                   TextButton(
                                     onPressed: () =>
                                         Navigator.of(context).pop(true),
-                                    child: Text('Yes'),
+                                    child: const Text('Yes'),
                                   ),
                                 ],
                               );
                             },
                           );
 
-                          if (confirm == true) {
+                          if (confirm == true && context.mounted) {
                             // Navigate to the avatars page
                             Navigator.of(context).pushNamed('/avatars');
                           }
@@ -186,30 +190,15 @@ class _ProfilePageState extends State<ProfilePage> {
                         child: Hero(
                           tag: 'profileAvatar',
                           child: Container(
-                            width: size.width * 0.3,
-                            height: size.width * 0.3,
-                            clipBehavior: Clip.antiAlias,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                            ),
-                            child: StreamBuilder(
-                              stream: FirebaseFirestore.instance
-                                  .collection('users')
-                                  .doc(FirebaseAuth.instance.currentUser?.uid)
-                                  .snapshots(),
-                              builder: ((context, snapshot) {
-                                if (snapshot.hasData) {
-                                  int? avatarIndex =
-                                      snapshot.data?['avatarIndex'];
-                                  return FittedBox(
-                                      child: Image.asset(
-                                          'assets/images/avatar${avatarIndex}.png'));
-                                }
-                                return const Center(
-                                    child: LinearProgressIndicator());
-                              }),
-                            ),
-                          ),
+                              width: size.width * 0.3,
+                              height: size.width * 0.3,
+                              clipBehavior: Clip.antiAlias,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                              ),
+                              child: FittedBox(
+                                  child: Image.asset(
+                                      'assets/images/avatar${profile.user?.avatarIndex ?? 1}.png'))),
                         ),
                       ),
                     ),
@@ -219,55 +208,29 @@ class _ProfilePageState extends State<ProfilePage> {
                         Padding(
                           padding:
                               const EdgeInsetsDirectional.fromSTEB(8, 8, 8, 4),
-                          child: StreamBuilder(
-                            stream: FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(FirebaseAuth.instance.currentUser?.uid)
-                                .snapshots(),
-                            builder: ((context, snapshot) {
-                              if (snapshot.hasData) {
-                                return FittedBox(
-                                  child: Text(
-                                    snapshot.data!['name'],
-                                    style:
-                                        KMTheme.of(context).bodyMedium.copyWith(
-                                              fontFamily: 'Readex Pro',
-                                              fontSize: 20,
-                                              letterSpacing: 0,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                          child: FittedBox(
+                            child: Text(
+                              profile.user?.name ?? 'User Name',
+                              style: KMTheme.of(context).bodyMedium.copyWith(
+                                    fontFamily: 'Readex Pro',
+                                    fontSize: 20,
+                                    letterSpacing: 0,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                );
-                              }
-                              return const Center(
-                                  child: LinearProgressIndicator());
-                            }),
+                            ),
                           ),
                         ),
                         Align(
                           alignment: const AlignmentDirectional(-1, 0),
-                          child: StreamBuilder(
-                              stream: FirebaseFirestore.instance
-                                  .collection('users')
-                                  .doc(FirebaseAuth.instance.currentUser?.uid)
-                                  .snapshots(),
-                              builder: ((context, snapshot) {
-                                if (snapshot.hasData) {
-                                  return Center(
-                                    child: Text(
-                                      snapshot.data!['email'],
-                                      style: KMTheme.of(context)
-                                          .bodyMedium
-                                          .copyWith(
-                                            fontFamily: 'Readex Pro',
-                                            letterSpacing: 0,
-                                          ),
-                                    ),
-                                  );
-                                }
-                                return const Center(
-                                    child: CircularProgressIndicator());
-                              })),
+                          child: Center(
+                            child: Text(
+                              profile.user?.email ?? 'user@example.com',
+                              style: KMTheme.of(context).bodyMedium.copyWith(
+                                    fontFamily: 'Readex Pro',
+                                    letterSpacing: 0,
+                                  ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -304,28 +267,15 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           Align(
                             alignment: const AlignmentDirectional(-1, 0),
-                            child: StreamBuilder(
-                                stream: FirebaseFirestore.instance
-                                    .collection('users')
-                                    .doc(FirebaseAuth.instance.currentUser?.uid)
-                                    .snapshots(),
-                                builder: ((context, snapshot) {
-                                  if (snapshot.hasData) {
-                                    return Text(
-                                      snapshot.data!['helped'].toString(),
-                                      style: KMTheme.of(context)
-                                          .bodyMedium
-                                          .copyWith(
-                                            fontFamily: 'Readex Pro',
-                                            fontSize: 35,
-                                            letterSpacing: 0,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                    );
-                                  }
-                                  return const Center(
-                                      child: LinearProgressIndicator());
-                                })),
+                            child: Text(
+                              profile.user?.helped.toString() ?? '0',
+                              style: KMTheme.of(context).bodyMedium.copyWith(
+                                    fontFamily: 'Readex Pro',
+                                    fontSize: 35,
+                                    letterSpacing: 0,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
                           ),
                           Align(
                             alignment: const AlignmentDirectional(0, 0),
@@ -425,13 +375,19 @@ class _ProfilePageState extends State<ProfilePage> {
                             minLines: null,
                             validator: (value) =>
                                 textController1Validator(context, value),
-                            onFieldSubmitted: (newValue) {
+                            onFieldSubmitted: (newValue) async {
                               textController1.clear();
                               if (newValue == '') return;
-                              FirebaseFirestore.instance
-                                  .collection('users')
-                                  .doc(FirebaseAuth.instance.currentUser?.uid)
-                                  .update({'name': newValue});
+                              // FirebaseFirestore.instance
+                              //     .collection('users')
+                              //     .doc(FirebaseAuth.instance.currentUser?.uid)
+                              //     .update({'name': newValue});
+                              await context
+                                  .read<ProfileProvider>()
+                                  .updateName(newValue);
+                              await UserController().changeUserName(
+                                  FirebaseAuth.instance.currentUser!.uid,
+                                  newValue);
                             },
                           ),
                         ),
@@ -599,7 +555,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           ElevatedButton(
                             onPressed: () {
-                              print('Button pressed ...');
+                              debugPrint('Button pressed ...');
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: KMTheme.of(context).primary,
@@ -628,26 +584,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   alignment: const AlignmentDirectional(0, 1),
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: StreamBuilder(
-                        stream: FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(FirebaseAuth.instance.currentUser?.uid)
-                            .snapshots(),
-                        builder: ((context, snapshot) {
-                          if (snapshot.hasData) {
-                            return AutoSizeText(
-                              'Joined KindMap on ${snapshot.data!['joined']}',
-                              style: KMTheme.of(context).bodyMedium.copyWith(
-                                    fontFamily: 'Open Sans',
-                                    color: const Color(0xB457636C),
-                                    letterSpacing: 0,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                              minFontSize: 10,
-                            );
-                          }
-                          return const Center(child: LinearProgressIndicator());
-                        })),
+                    child: AutoSizeText(
+                      'Joined KindMap on ${profile.user?.joinedDate ?? 'N/A'}',
+                      style: KMTheme.of(context).bodyMedium.copyWith(
+                            fontFamily: 'Open Sans',
+                            color: const Color(0xB457636C),
+                            letterSpacing: 0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                      minFontSize: 10,
+                    ),
                   ),
                 ),
               ],

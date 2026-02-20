@@ -6,10 +6,10 @@ import 'package:latlong2/latlong.dart';
 import '../widgets/detail_box.dart';
 
 class PinConfirmation extends StatefulWidget {
-  PinConfirmation({super.key, required this.cellId, required this.docName});
+  const PinConfirmation({super.key, required this.cellId, required this.pinId});
 
-  String cellId;
-  String docName;
+  final String cellId;
+  final String pinId;
 
   @override
   State<PinConfirmation> createState() => _PinConfirmationState();
@@ -78,8 +78,8 @@ class _PinConfirmationState extends State<PinConfirmation> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false,
+    return PopScope(
+      canPop: false,
       child: Scaffold(
         body: FutureBuilder<void>(
           future: _determinePosition(),
@@ -96,11 +96,11 @@ class _PinConfirmationState extends State<PinConfirmation> {
                       options: MapOptions(
                           minZoom: 0,
                           maxZoom: 18,
-                          initialCenter:
-                              location ?? LatLng(0, 0), // Fallback to (0, 0)
+                          initialCenter: location ??
+                              const LatLng(0, 0), // Fallback to (0, 0)
                           initialZoom: 17,
-                          interactionOptions:
-                              InteractionOptions(flags: InteractiveFlag.none)),
+                          interactionOptions: const InteractionOptions(
+                              flags: InteractiveFlag.none)),
                       children: [
                         openStreetMapTileLayer,
                         if (location != null)
@@ -126,7 +126,7 @@ class _PinConfirmationState extends State<PinConfirmation> {
                       child: SizedBox(
                         child: DetailBox(
                           cellId: widget.cellId,
-                          docName: widget.docName,
+                          pinId: widget.pinId,
                           location: location!,
                         ),
                       ),

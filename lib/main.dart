@@ -2,16 +2,17 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:kindmap/config/routes.dart';
-import 'package:kindmap/firebase_options.dart';
-import 'package:kindmap/screens/auth_pages.dart/login_form.dart';
-import 'package:kindmap/screens/homescreen.dart';
-import 'package:kindmap/screens/splash_screen.dart';
-import 'package:kindmap/services/fcm_service.dart';
-import 'package:kindmap/services/theme_services.dart';
-import 'config/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'services/map_services.dart';
+
+import 'config/app_theme.dart';
+import 'config/routes.dart';
+import 'firebase_options.dart';
+import 'providers/profile_provider.dart';
+import 'screens/auth_pages/login_form.dart';
+import 'screens/homescreen.dart';
+import 'services/fcm_service.dart';
+import 'providers/map_provider.dart';
+import 'providers/theme_provider.dart';
 
 void main() async {
   await dotenv.load(fileName: '.env');
@@ -28,22 +29,44 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => MapProvider()),
+        StreamProvider<User?>.value(
+          value: FirebaseAuth.instance.authStateChanges(),
+          initialData: null,
+        ),
         ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProxyProvider<User?, ProfileProvider>(
+          create: (_) => ProfileProvider(),
+          update: (_, user, profileProvider) {
+            final provider = profileProvider ?? ProfileProvider();
+            provider.updateUserId(user?.uid);
+            return provider;
+          },
+        ),
       ],
       child: const MyApp(),
     ),
   );
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    try {
-      await FCM().initNotifications();
-    } catch (e) {
-      debugPrint('FCM init failed: $e');
-    }
-  });
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await FCM().initNotifications();
+      } catch (e) {
+        debugPrint('FCM init failed: $e');
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

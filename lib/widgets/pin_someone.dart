@@ -3,7 +3,7 @@ import 'package:kindmap/screens/camera.dart';
 
 import '../config/app_theme.dart';
 
-Widget PinSomeone(Size size, BuildContext context) {
+Widget pinSomeone(Size size, BuildContext context) {
   return Align(
     alignment: Alignment.bottomCenter,
     child: Padding(
@@ -45,9 +45,9 @@ Widget PinSomeone(Size size, BuildContext context) {
           child: Container(
             height: size.height * 0.08,
             decoration: BoxDecoration(
-              color: KMTheme.of(context).secondary,
+              color: const Color(0xD6E5151E).withAlpha(220),
               borderRadius: BorderRadius.circular(15),
-              boxShadow: [
+              boxShadow: const [
                 BoxShadow(
                   blurRadius: 12,
                   color: Color(0x33000000),
@@ -64,18 +64,18 @@ Widget PinSomeone(Size size, BuildContext context) {
                     'Pin Someone',
                     style: KMTheme.of(context).bodyMedium.copyWith(
                           fontFamily: 'Plus Jakarta Sans',
-                          color: KMTheme.of(context).primaryText,
+                          color: const Color(0xFFFFFFFF),
                           fontSize: 20,
                           letterSpacing: 0,
                           fontWeight: FontWeight.w600,
                         ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
+                const Padding(
+                  padding: EdgeInsets.only(right: 16.0),
                   child: Icon(
                     Icons.share_location,
-                    color: KMTheme.of(context).primaryText,
+                    color: Color(0xFFFFFFFF),
                     size: 40,
                   ),
                 ),

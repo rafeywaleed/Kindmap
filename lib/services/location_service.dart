@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -9,7 +10,7 @@ class LocationService {
           desiredAccuracy: LocationAccuracy.high);
       return LatLng(position.latitude, position.longitude);
     } catch (e) {
-      print('Error getting location: $e');
+      debugPrint('Error getting location: $e');
       return null;
     }
   }

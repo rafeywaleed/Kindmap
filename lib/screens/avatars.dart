@@ -1,6 +1,9 @@
-import "package:cloud_firestore/cloud_firestore.dart";
 import "package:firebase_auth/firebase_auth.dart";
 import "package:flutter/material.dart";
+import "package:provider/provider.dart";
+
+import "../controllers/user_controller.dart";
+import "../providers/profile_provider.dart";
 
 class Avatars extends StatefulWidget {
   const Avatars({super.key});
@@ -16,11 +19,11 @@ class _AvatarsState extends State<Avatars> {
     var size = MediaQuery.of(context).size;
     return Scaffold(
       appBar: AppBar(
-        title: Text("Select your Avatar: "),
+        title: const Text("Select your Avatar: "),
         automaticallyImplyLeading: false,
       ),
       body: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
         ),
         itemCount: 8,
@@ -32,8 +35,8 @@ class _AvatarsState extends State<Avatars> {
               });
             },
             child: Container(
-              padding: EdgeInsets.all(8),
-              margin: EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(100),
                 border: Border.all(
@@ -55,11 +58,11 @@ class _AvatarsState extends State<Avatars> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           uploadindex();
-          Navigator.of(context).pushNamed('/home');
-          print('Selected Avatar Index: $selectedAvatarIndex');
+          Navigator.of(context).pop();
+          debugPrint('Selected Avatar Index: $selectedAvatarIndex');
         },
-        child: Icon(Icons.check, size: 30, color: Colors.white),
         backgroundColor: Colors.blue,
+        child: const Icon(Icons.check, size: 30, color: Colors.white),
       ),
     );
   }
@@ -68,13 +71,14 @@ class _AvatarsState extends State<Avatars> {
     try {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({'avatarIndex': selectedAvatarIndex + 1});
+        await context
+            .read<ProfileProvider>()
+            .updateAvatarIndex(selectedAvatarIndex + 1);
+        await UserController()
+            .changeUserAvatar(user.uid, selectedAvatarIndex + 1);
       }
     } catch (e) {
-      print('Error uploading avatar index: $e');
+      debugPrint('Error uploading avatar index: $e');
     }
   }
 }

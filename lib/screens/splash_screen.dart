@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:kindmap/config/app_theme.dart';
+import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
+
+import '../providers/profile_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -51,12 +54,17 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
-  void _goHome() {
+  void _goHome() async {
     if (_navigated || !mounted) return;
     _navigated = true;
 
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      final profileProvider = context.read<ProfileProvider>();
+      if (profileProvider.user == null && !profileProvider.isLoading) {
+        await profileProvider.loadProfile();
+      }
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
       Navigator.of(context).pushReplacementNamed('/auth');

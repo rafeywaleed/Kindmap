@@ -25,7 +25,8 @@ class _CameraPageState extends State<CameraPage> {
   Future<void> _initializeCamera() async {
     final cameras = await availableCameras();
     _controller = CameraController(
-      cameras.first,
+      cameras.firstWhere(
+          (camera) => camera.lensDirection == CameraLensDirection.back),
       ResolutionPreset.low,
       enableAudio: false,
     );
@@ -47,7 +48,7 @@ class _CameraPageState extends State<CameraPage> {
         _isTorchOn.value ? FlashMode.torch : FlashMode.off,
       );
     } catch (e) {
-      print('Error toggling torch: $e');
+      debugPrint('Error toggling torch: $e');
     }
   }
 
@@ -84,7 +85,7 @@ class _CameraPageState extends State<CameraPage> {
         );
       }
     } catch (e) {
-      print('Error taking picture: $e');
+      debugPrint('Error taking picture: $e');
     }
   }
 

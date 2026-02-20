@@ -1,25 +1,26 @@
 import 'dart:developer';
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:kindmap/config/app_theme.dart';
-import 'package:kindmap/services/get_cell_info.dart';
+import 'package:kindmap/controllers/location_controller.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:permission_handler/permission_handler.dart';
 
-import '../services/map_services.dart';
+import '../config/app_theme.dart';
+import '../controllers/pin_controller.dart';
+import '../services/get_cell_info.dart';
+import '../controllers/grid_controller.dart';
+import '../models/pin_model.dart';
+import '../providers/map_provider.dart';
 import 'pin_box.dart';
-import '../screens/pin_page.dart';
 
 class Maps extends StatefulWidget {
-  const Maps({Key? key}) : super(key: key);
+  const Maps({super.key});
 
   @override
   State<Maps> createState() => _MapsState();
@@ -31,6 +32,7 @@ class _MapsState extends State<Maps>
   LatLng? _currentLocation;
   LatLng? _lastKnownLocation;
   LatLng? _selectedMarkerLocation;
+  LatLng? _currentGridLocation;
 
   LocationPermission? _locationPermission;
   bool _locationServiceEnabled = false;
@@ -52,6 +54,7 @@ class _MapsState extends State<Maps>
 
   Timer? _locationCheckTimer;
   StreamSubscription<Position>? _positionSubscription;
+  StreamSubscription<List<Pin>>? _pinsSubscription;
 
   @override
   void initState() {
@@ -69,6 +72,7 @@ class _MapsState extends State<Maps>
     _pulseAnimationController.dispose();
     _locationCheckTimer?.cancel();
     _positionSubscription?.cancel();
+    _pinsSubscription?.cancel();
     super.dispose();
   }
 
@@ -190,7 +194,7 @@ class _MapsState extends State<Maps>
     final lastLat = prefs.getDouble('last_latitude');
     final lastLng = prefs.getDouble('last_longitude');
 
-    if (lastLat != null && lastLng != null) {
+    if (lastLat != null && lastLng != null && mounted) {
       _lastKnownLocation = LatLng(lastLat, lastLng);
       final mapProvider = Provider.of<MapProvider>(context, listen: false);
       mapProvider.setLocation(_lastKnownLocation!);
@@ -211,13 +215,15 @@ class _MapsState extends State<Maps>
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({
-          'last_location': GeoPoint(location.latitude, location.longitude),
-          'last_updated': FieldValue.serverTimestamp(),
-        });
+        //TODO: Add last location and last updated fields to API
+        await LocationController().saveLastLocation(_currentLocation!);
+        // await FirebaseFirestore.instance
+        //     .collection('users')
+        //     .doc(user.uid)
+        //     .update({
+        //   'last_location': GeoPoint(location.latitude, location.longitude),
+        //   'last_updated': FieldValue.serverTimestamp(),
+        // });
       } catch (e) {
         log('Error saving location to Firestore: $e');
       }
@@ -237,7 +243,7 @@ class _MapsState extends State<Maps>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withAlpha(25),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.location_off,
@@ -297,7 +303,7 @@ class _MapsState extends State<Maps>
           children: [
             Container(
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withAlpha(25),
                 borderRadius: BorderRadius.circular(6),
               ),
               padding: const EdgeInsets.all(6),
@@ -452,6 +458,7 @@ class _MapsState extends State<Maps>
     }
 
     if (_currentLocation != null) {
+      await LocationController().saveLastLocation(_currentLocation!);
       _animateToLocation(_currentLocation!);
       setState(() => _isUsingCurrentLocation = true);
       return;
@@ -469,7 +476,7 @@ class _MapsState extends State<Maps>
       _currentLocation = LatLng(position.latitude, position.longitude);
       final mapProvider = Provider.of<MapProvider>(context, listen: false);
       mapProvider.setLocation(_currentLocation!);
-
+      await LocationController().saveLastLocation(_currentLocation!);
       _animateToLocation(_currentLocation!);
       setState(() => _isUsingCurrentLocation = true);
 
@@ -543,8 +550,8 @@ class _MapsState extends State<Maps>
             desiredAccuracy: LocationAccuracy.high,
             timeLimit: const Duration(seconds: 5),
           );
-
       _currentLocation = LatLng(position.latitude, position.longitude);
+      await LocationController().saveLastLocation(_currentLocation!);
       final mapProvider = Provider.of<MapProvider>(context, listen: false);
       mapProvider.setLocation(_currentLocation!);
 
@@ -554,6 +561,23 @@ class _MapsState extends State<Maps>
       }
 
       await _saveLocation(_currentLocation!);
+
+      final cellInfo =
+          getCellInfo(_currentLocation!.latitude, _currentLocation!.longitude);
+      final cellId = cellInfo['cellId'];
+      _pinsSubscription?.cancel();
+      _pinsSubscription =
+          GridController().streamGridPins(cellId).listen((pins) {
+        final markers = pins.map((pin) {
+          final data = pin.toJson();
+          final markerLocation = LatLng(data['latitude'], data['longitude']);
+          return Marker(
+            point: markerLocation,
+            child: _buildPinMarker(location: markerLocation, pin: pin),
+          );
+        }).toList();
+        Provider.of<MapProvider>(context, listen: false).setMarkers(markers);
+      });
 
       // Set up continuous location tracking
       _positionSubscription?.cancel();
@@ -599,14 +623,11 @@ class _MapsState extends State<Maps>
 
       log("Loading markers for cell: $cellId");
 
-      final markersSnapshot = await FirebaseFirestore.instance
-          .collection('pins')
-          .doc(cellId)
-          .collection('markers')
-          .get();
+      final List<Pin> markersSnapshot =
+          await GridController().fetchPinsByGridId(cellId);
 
-      for (var markerDoc in markersSnapshot.docs) {
-        final data = markerDoc.data();
+      for (Pin pin in markersSnapshot) {
+        final data = pin.toJson();
         final latitude = data['latitude'];
         final longitude = data['longitude'];
         final markerLocation = LatLng(latitude, longitude);
@@ -617,7 +638,7 @@ class _MapsState extends State<Maps>
             child: GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
-                _onMarkerTap(markerLocation, data, markerDoc);
+                _onMarkerTap(markerLocation, pin);
               },
               child: AnimatedBuilder(
                 animation: _selectedMarkerLocation == markerLocation
@@ -640,8 +661,8 @@ class _MapsState extends State<Maps>
                           borderRadius: BorderRadius.circular(25),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black
-                                  .withOpacity(isSelected ? 0.3 : 0.15),
+                              color:
+                                  Colors.black.withAlpha(isSelected ? 83 : 38),
                               blurRadius: isSelected ? 8 : 4,
                               offset: Offset(0, isSelected ? 4 : 2),
                             ),
@@ -668,8 +689,7 @@ class _MapsState extends State<Maps>
     }
   }
 
-  void _onMarkerTap(LatLng markerLocation, Map<String, dynamic> data,
-      DocumentSnapshot markerDoc) {
+  void _onMarkerTap(LatLng markerLocation, Pin pin) {
     setState(() {
       _selectedMarkerLocation = markerLocation;
     });
@@ -686,18 +706,13 @@ class _MapsState extends State<Maps>
       backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
         return PinBox(
-          note: data['note'],
-          detail: data['details'],
-          image: data['imageBase64'],
-          timeleft: data['timer'],
-          latitude: markerLocation.latitude,
-          longitude: markerLocation.longitude,
+          pin: pin,
           location: Provider.of<MapProvider>(context, listen: false).location ??
-              LatLng(0, 0),
+              const LatLng(0, 0),
           onServe: () async {
             try {
-              // Remove from Firestore
-              await markerDoc.reference.delete();
+              // Delete pin
+              await PinController().deletePin(pin.pinId);
 
               // Update local state
               final mapProvider =
@@ -725,9 +740,9 @@ class _MapsState extends State<Maps>
               }
 
               // Close the bottom sheet AFTER removing marker
-              Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
             } catch (e) {
-              print('Error removing pin: $e');
+              debugPrint('Error removing pin: $e');
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -786,6 +801,51 @@ class _MapsState extends State<Maps>
     );
   }
 
+  Widget _buildPinMarker({required LatLng location, required Pin pin}) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        _onMarkerTap(location, pin);
+      },
+      child: AnimatedBuilder(
+        animation: _selectedMarkerLocation == location
+            ? _markerAnimationController
+            : _pulseAnimationController,
+        builder: (context, child) {
+          final isSelected = _selectedMarkerLocation == location;
+          final scale = isSelected
+              ? _markerScaleAnimation.value
+              : _pulseAnimation.value * 0.1 + 0.95;
+          final offset = isSelected ? _markerSlideAnimation.value : Offset.zero;
+
+          return Transform.translate(
+            offset: Offset(offset.dx * 50, offset.dy * 50),
+            child: Transform.scale(
+              scale: scale,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(isSelected ? 83 : 38),
+                      blurRadius: isSelected ? 8 : 4,
+                      offset: Offset(0, isSelected ? 4 : 2),
+                    ),
+                  ],
+                ),
+                child: Image.asset(
+                  'assets/images/MapMarker.png',
+                  width: isSelected ? 60 : 50,
+                  height: isSelected ? 60 : 50,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mapProvider = Provider.of<MapProvider>(context);
@@ -823,6 +883,35 @@ class _MapsState extends State<Maps>
               ),
               children: [
                 openStreetMapTileLayer,
+                if (_currentLocation != null)
+                  Builder(
+                    builder: (context) {
+                      final cell = getCellInfo(_currentLocation!.latitude,
+                          _currentLocation!.longitude);
+                      final double swLat = (cell['row'] as int) *
+                          (cell['deltaLatDeg'] as double);
+                      final double swLng = (cell['col'] as int) *
+                          (cell['deltaLongDeg'] as double);
+                      final double deltaLat = cell['deltaLatDeg'] as double;
+                      final double deltaLng = cell['deltaLongDeg'] as double;
+                      final List<LatLng> corners = [
+                        LatLng(swLat, swLng), // SW
+                        LatLng(swLat, swLng + deltaLng), // SE
+                        LatLng(swLat + deltaLat, swLng + deltaLng), // NE
+                        LatLng(swLat + deltaLat, swLng), // NW
+                      ];
+                      return PolygonLayer(
+                        polygons: [
+                          Polygon(
+                            points: corners,
+                            color: Colors.blue.withOpacity(0.18),
+                            borderColor: Colors.blue.withOpacity(0.08),
+                            borderStrokeWidth: 2,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 MarkerLayer(
                   markers: [
                     if (_locationServiceEnabled &&

@@ -1,12 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
-import 'package:kindmap/config/app_theme.dart';
-import 'package:kindmap/services/permission_services.dart';
-import 'package:kindmap/services/theme_services.dart' show ThemeProvider;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+
+import '../config/app_theme.dart';
+import '../providers/profile_provider.dart';
+import '../services/permission_service.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/map.dart';
 import '../widgets/pin_someone.dart';
 
@@ -102,9 +103,10 @@ class _HomePageState extends State<HomePage>
   @override
   Widget build(BuildContext context) {
     var size = MediaQuery.of(context).size;
+    final ProfileProvider profile = context.watch<ProfileProvider>();
 
-    return WillPopScope(
-      onWillPop: () async => false,
+    return PopScope(
+      canPop: false,
       child: Scaffold(
         backgroundColor: KMTheme.of(context).alternate,
         endDrawer: Drawer(
@@ -151,8 +153,8 @@ class _HomePageState extends State<HomePage>
                     child: Column(
                       mainAxisSize: MainAxisSize.max,
                       children: [
-                        GestureDetector(
-                          onDoubleTap: () =>
+                        InkWell(
+                          onTap: () =>
                               Navigator.of(context).pushNamed('/profile'),
                           child: Container(
                             decoration: BoxDecoration(
@@ -183,75 +185,37 @@ class _HomePageState extends State<HomePage>
                                     Padding(
                                       padding: const EdgeInsets.all(14),
                                       child: Container(
-                                        width: size.width * 0.3,
-                                        height: size.width * 0.3,
-                                        clipBehavior: Clip.antiAlias,
-                                        decoration: const BoxDecoration(
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: StreamBuilder(
-                                          stream: FirebaseFirestore.instance
-                                              .collection('users')
-                                              .doc(FirebaseAuth
-                                                  .instance.currentUser?.uid)
-                                              .snapshots(),
-                                          builder: ((context, snapshot) {
-                                            if (snapshot.hasData &&
-                                                snapshot.data?.data() != null) {
-                                              final data =
-                                                  snapshot.data!.data()!;
-                                              int? avatarIndex =
-                                                  data['avatarIndex'];
-                                              return FittedBox(
-                                                child: Image.asset(
-                                                    'assets/images/avatar${avatarIndex ?? 0}.png'),
-                                              );
-                                            }
-                                            return const Center(
-                                                child:
-                                                    LinearProgressIndicator());
-                                          }),
-                                        ),
-                                      ),
+                                          width: size.width * 0.3,
+                                          height: size.width * 0.3,
+                                          clipBehavior: Clip.antiAlias,
+                                          decoration: const BoxDecoration(
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: FittedBox(
+                                            child: Image.asset(
+                                                'assets/images/avatar${profile.avatarIndex ?? 1}.png'),
+                                          )),
                                     ),
                                   ],
                                 ),
                                 Align(
                                   alignment: Alignment.centerLeft,
                                   child: Padding(
-                                    padding:
-                                        const EdgeInsetsDirectional.fromSTEB(
-                                            10, 0, 10, 10),
-                                    child: StreamBuilder(
-                                        stream: FirebaseFirestore.instance
-                                            .collection('users')
-                                            .doc(FirebaseAuth
-                                                .instance.currentUser?.uid)
-                                            .snapshots(),
-                                        builder: ((context, snapshot) {
-                                          if (snapshot.hasData &&
-                                              snapshot.data?.data() != null) {
-                                            final data = snapshot.data!.data()!;
-                                            final name =
-                                                data['name'] ?? 'No Name';
-                                            return FittedBox(
-                                                child: Text(
-                                              name,
-                                              style: KMTheme.of(context)
-                                                  .bodyMedium
-                                                  .copyWith(
-                                                    fontFamily:
-                                                        'Plus Jakarta Sans',
-                                                    fontSize: 22.5,
-                                                    letterSpacing: 0,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                            ));
-                                          }
-                                          return const Center(
-                                              child: LinearProgressIndicator());
-                                        })),
-                                  ),
+                                      padding:
+                                          const EdgeInsetsDirectional.fromSTEB(
+                                              10, 0, 10, 10),
+                                      child: FittedBox(
+                                          child: Text(
+                                        profile.user?.name ?? 'User Name',
+                                        style: KMTheme.of(context)
+                                            .bodyMedium
+                                            .copyWith(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 22.5,
+                                              letterSpacing: 0,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ))),
                                 ),
                               ],
                             ),
@@ -460,7 +424,7 @@ class _HomePageState extends State<HomePage>
         ),
         appBar: AppBar(
           scrolledUnderElevation: 0,
-          backgroundColor: KMTheme.of(context).secondaryBackground,
+          backgroundColor: Color.fromARGB(255, 255, 147, 143),
           iconTheme: IconThemeData(color: KMTheme.of(context).primaryText),
           automaticallyImplyLeading: true,
           leading: ClipRRect(
@@ -501,7 +465,7 @@ class _HomePageState extends State<HomePage>
                 child: Container(
                   height: 10,
                   decoration: BoxDecoration(
-                    color: KMTheme.of(context).primaryBackground,
+                    color: Color.fromARGB(255, 255, 157, 151),
                     borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(16),
                       bottomRight: Radius.circular(0),
@@ -509,7 +473,7 @@ class _HomePageState extends State<HomePage>
                   ),
                 ),
               ),
-              PinSomeone(size, context)
+              pinSomeone(size, context)
             ],
           ),
         ),

@@ -1,0 +1,2 @@
+C:/Users/zaibg/Desktop/new_kindmap_2026/Kindmap/android/app/.cxx/RelWithDebInfo/433a4i1f/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/zaibg/Desktop/new_kindmap_2026/Kindmap/android/app/.cxx/RelWithDebInfo/433a4i1f/x86_64/CMakeFiles/rebuild_cache.dir

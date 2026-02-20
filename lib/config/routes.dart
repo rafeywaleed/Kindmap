@@ -1,9 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
-import 'package:kindmap/screens/splash_screen.dart';
-
 import '../screens/IntroScreens.dart';
-import '../screens/auth_pages.dart/login_form.dart';
+import '../screens/auth_pages/login_form.dart';
 import '../screens/avatars.dart';
 import '../screens/camera.dart';
 import '../screens/homescreen.dart';
@@ -16,6 +12,7 @@ import '../screens/settings_pages/permissions.dart';
 import '../screens/settings_pages/privacy_policy_screen.dart';
 import '../screens/settings_pages/profile_page.dart';
 import '../screens/settings_screen.dart';
+import '../screens/splash_screen.dart';
 import '../widgets/map.dart';
 
 final appRoutes = {

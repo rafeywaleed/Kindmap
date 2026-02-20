@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:kindmap/firebase_options.dart';
 
@@ -15,7 +16,7 @@ Future<void> handleBackgroundMessage(RemoteMessage? message) async {
 
   if (message == null) return;
 
-  print('🔔 Background message received: ${message.notification?.title}');
+  debugPrint('🔔 Background message received: ${message.notification?.title}');
   // Optional: handle routing here if needed
   // navigatorKey.currentState?.pushNamed('/map');
 }
@@ -37,7 +38,7 @@ class FCM {
   Future<void> _initMobileNotifications() async {
     await _firebaseMessaging.requestPermission();
     final fcmToken = await _firebaseMessaging.getToken();
-    print('Mobile FCM Token: $fcmToken');
+    debugPrint('Mobile FCM Token: $fcmToken');
 
     // Configure foreground notification presentation
     await _firebaseMessaging.setForegroundNotificationPresentationOptions(

@@ -8,9 +8,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_theme.dart';
+import '../models/pin_model.dart';
 import 'box_handle.dart';
 
 class PinBox extends StatefulWidget {
+  final Pin pin;
   final String timeleft;
   final double latitude;
   final double longitude;
@@ -20,17 +22,17 @@ class PinBox extends StatefulWidget {
   final VoidCallback onServe;
   final LatLng location;
 
-  const PinBox({
+  PinBox({
     super.key,
-    required this.timeleft,
-    required this.latitude,
-    required this.longitude,
-    required this.note,
-    required this.image,
-    required this.detail,
+    required this.pin,
     required this.onServe,
     required this.location,
-  });
+  })  : note = pin.note ?? '',
+        image = pin.imageBase64 ?? '',
+        detail = pin.details ?? '',
+        latitude = pin.latitude,
+        longitude = pin.longitude,
+        timeleft = pin.timer.toString();
 
   @override
   State<PinBox> createState() => _PinBoxState();
@@ -62,7 +64,7 @@ class _PinBoxState extends State<PinBox> {
           'https://www.google.com/maps/dir//${widget.latitude},${widget.longitude}/@${widget.latitude},${widget.longitude}');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not launch maps')),
         );
