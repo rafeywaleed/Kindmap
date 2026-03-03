@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +19,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage>
     with TickerProviderStateMixin, WidgetsBindingObserver {
+  bool isGridSelectionMode = false;
   @override
   void initState() {
     super.initState();
@@ -98,6 +98,18 @@ class _HomePageState extends State<HomePage>
         ],
       ),
     );
+  }
+
+  void toggleGridSelectionMode() {
+    setState(() {
+      isGridSelectionMode = !isGridSelectionMode;
+    });
+  }
+
+  void setGridSelectionMode(bool value) {
+    setState(() {
+      isGridSelectionMode = value;
+    });
   }
 
   @override
@@ -424,7 +436,7 @@ class _HomePageState extends State<HomePage>
         ),
         appBar: AppBar(
           scrolledUnderElevation: 0,
-          backgroundColor: Color.fromARGB(255, 255, 147, 143),
+          backgroundColor: const Color.fromARGB(255, 255, 178, 175),
           iconTheme: IconThemeData(color: KMTheme.of(context).primaryText),
           automaticallyImplyLeading: true,
           leading: ClipRRect(
@@ -459,21 +471,27 @@ class _HomePageState extends State<HomePage>
           top: true,
           child: Stack(
             children: [
-              Maps(),
+              Maps(
+                  isGridSelectionMode: isGridSelectionMode,
+                  toggleGridSelectionMode: toggleGridSelectionMode,
+                  setGridSelectionMode: setGridSelectionMode),
               Align(
                 alignment: Alignment.topCenter,
                 child: Container(
                   height: 10,
-                  decoration: BoxDecoration(
-                    color: Color.fromARGB(255, 255, 157, 151),
-                    borderRadius: const BorderRadius.only(
+                  decoration: const BoxDecoration(
+                    color: Color.fromARGB(255, 255, 184, 180),
+                    borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(16),
                       bottomRight: Radius.circular(0),
                     ),
                   ),
                 ),
               ),
-              pinSomeone(size, context)
+              Visibility(
+                visible: !isGridSelectionMode,
+                child: pinSomeone(size, context),
+              )
             ],
           ),
         ),

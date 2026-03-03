@@ -9,7 +9,7 @@ import 'config/routes.dart';
 import 'firebase_options.dart';
 import 'providers/profile_provider.dart';
 import 'screens/auth_pages/login_form.dart';
-import 'screens/homescreen.dart';
+import 'screens/home_page.dart';
 import 'services/fcm_service.dart';
 import 'providers/map_provider.dart';
 import 'providers/theme_provider.dart';
@@ -82,7 +82,7 @@ class _MyAppState extends State<MyApp> {
             stream: FirebaseAuth.instance.authStateChanges(),
             builder: (context, snapshot) {
               if (snapshot.hasData) {
-                return const HomePage();
+                return  HomePage();
               } else if (snapshot.hasError) {
                 return const Center(child: Text('Error'));
               } else {

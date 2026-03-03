@@ -114,14 +114,14 @@ class UserController {
     });
   }
 
-  Future<List<Grid>> fetchSubscribedGrids(String userId) async {
+  Future<List<String>> fetchSubscribedGrids(String userId) async {
     return await http
         .get(Uri.parse(
             "https://kindmap.onrender.com/api/v1/users/$userId/subscriptions"))
         .then((response) {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        return List<Grid>.from(data.map((gridJson) => Grid.fromJson(gridJson)));
+        return List<String>.from(data);
       } else {
         throw UserFetchException(response);
       }

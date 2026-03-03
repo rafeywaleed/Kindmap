@@ -2,7 +2,7 @@ import '../screens/IntroScreens.dart';
 import '../screens/auth_pages/login_form.dart';
 import '../screens/avatars.dart';
 import '../screens/camera.dart';
-import '../screens/homescreen.dart';
+import '../screens/home_page.dart';
 import '../screens/settings_pages/about.dart';
 import '../screens/settings_pages/contact.dart';
 import '../screens/settings_pages/donate.dart';
@@ -30,7 +30,7 @@ final appRoutes = {
   //     ),
   '/splash': (context) => const SplashScreen(),
   '/auth': (context) => const LoginForm(),
-  '/home': (context) => const HomePage(),
+  '/home': (context) =>  const HomePage(),
   '/camera': (context) => const CameraPage(),
   '/settings': (context) => const SettingsPage(),
   '/profile': (context) => const ProfilePage(),

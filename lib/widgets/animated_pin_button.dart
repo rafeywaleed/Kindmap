@@ -1,7 +1,7 @@
 // Add this to your imports
 import 'package:flutter/material.dart';
 import 'package:kindmap/config/app_theme.dart';
-import 'package:kindmap/screens/homescreen.dart';
+import 'package:kindmap/screens/home_page.dart';
 
 class AnimatedPinButton extends StatefulWidget {
   final Future<void> Function() onPressed;
@@ -110,7 +110,7 @@ class _AnimatedPinButtonState extends State<AnimatedPinButton>
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomePage()),
+          MaterialPageRoute(builder: (context) => HomePage()),
         );
       }
     } catch (e) {

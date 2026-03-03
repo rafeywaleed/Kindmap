@@ -21,3 +21,8 @@ Map<String, dynamic> getCellInfo(double lat, double long) {
     'deltaLongDeg': deltaLongDeg,
   };
 }
+
+String getCellId(double lat, double long) {
+  final cellInfo = getCellInfo(lat, long);
+  return cellInfo['cellId'];
+}
