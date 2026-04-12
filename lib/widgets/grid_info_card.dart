@@ -173,7 +173,7 @@ class _GridInfoCardState extends State<GridInfoCard>
                                 Container(
                                   constraints: BoxConstraints(
                                     maxHeight: _isListViewExpanded
-                                        ? screenHeight * 0.4
+                                        ? screenHeight * 0.45
                                         : 0,
                                   ),
                                   child: SingleChildScrollView(
@@ -218,7 +218,7 @@ class _GridInfoCardState extends State<GridInfoCard>
             children: [
               Expanded(
                 child: Text(
-                  'Grid ${widget.currentCellId.toString()}',
+                  'Grid: ${widget.currentCellId.toString()}',
                   style: theme.titleSmall.copyWith(
                     color: theme.primaryText,
                     fontSize: 17,

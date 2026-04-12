@@ -122,6 +122,10 @@ class _HomePageState extends State<HomePage>
       child: Scaffold(
         backgroundColor: KMTheme.of(context).alternate,
         endDrawer: Drawer(
+          width: MediaQuery.of(context).size.width * 0.75, // adaptive width
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.horizontal(left: Radius.circular(28)),
+          ),
           elevation: 16,
           child: SizedBox(
             child: Container(
@@ -340,89 +344,99 @@ class _HomePageState extends State<HomePage>
                           alignment: const AlignmentDirectional(-1, 0),
                           child: Padding(
                             padding: const EdgeInsets.all(8),
-                            child: Container(
-                              width: 0.2 * size.width,
-                              height: 0.1 * size.width,
-                              decoration: BoxDecoration(
-                                color: KMTheme.of(context).lineColor,
-                                boxShadow: const [
-                                  BoxShadow(
-                                    blurRadius: 8,
-                                    color: Colors.black,
-                                    offset: Offset(2, 3),
-                                    spreadRadius: 1,
-                                  )
-                                ],
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: KMTheme.of(context).accent1,
-                                  width: 4,
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(2),
-                                child: Stack(
-                                  alignment: const AlignmentDirectional(0, 0),
-                                  children: [
-                                    if (Theme.of(context).brightness ==
-                                        Brightness.light)
-                                      Align(
-                                        alignment: const AlignmentDirectional(
-                                            -0.74, -0.2),
-                                        child: Padding(
-                                          padding: const EdgeInsetsDirectional
-                                              .fromSTEB(0, 0, 6, 0),
-                                          child: InkWell(
-                                            splashColor: Colors.transparent,
-                                            focusColor: Colors.transparent,
-                                            hoverColor: Colors.transparent,
-                                            highlightColor: Colors.transparent,
-                                            onTap: () async {
-                                              Provider.of<ThemeProvider>(
-                                                      context,
-                                                      listen: false)
-                                                  .toggleTheme();
-                                            },
-                                            child: Icon(
-                                              Icons.nights_stay,
-                                              color: KMTheme.of(context)
-                                                  .primaryText,
-                                              size: 30,
+                            child: // Replace the existing theme toggle button (the Align → Padding → Container section)
+// with this animated version:
+
+                                Consumer<ThemeProvider>(
+                              builder: (context, themeProvider, child) {
+                                final isDark = Theme.of(context).brightness ==
+                                    Brightness.dark;
+                                return Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Container(
+                                    width: 0.2 * size.width,
+                                    height: 0.1 * size.width,
+                                    decoration: BoxDecoration(
+                                      color: KMTheme.of(context).lineColor,
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          blurRadius: 8,
+                                          color: Colors.black,
+                                          offset: Offset(2, 3),
+                                          spreadRadius: 1,
+                                        )
+                                      ],
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(
+                                        color: KMTheme.of(context).accent1,
+                                        width: 4,
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(2),
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          AnimatedAlign(
+                                            alignment: isDark
+                                                ? const Alignment(0.70, 0.25)
+                                                : const Alignment(-0.74, -0.2),
+                                            duration: const Duration(
+                                                milliseconds: 400),
+                                            curve: Curves.easeInOut,
+                                            child: AnimatedPadding(
+                                              duration: const Duration(
+                                                  milliseconds: 400),
+                                              curve: Curves.easeInOut,
+                                              padding: isDark
+                                                  ? const EdgeInsets.only(
+                                                      left: 5)
+                                                  : const EdgeInsets.only(
+                                                      right: 6),
+                                              child: InkWell(
+                                                splashColor: Colors.transparent,
+                                                focusColor: Colors.transparent,
+                                                hoverColor: Colors.transparent,
+                                                highlightColor:
+                                                    Colors.transparent,
+                                                onTap: () {
+                                                  Provider.of<ThemeProvider>(
+                                                          context,
+                                                          listen: false)
+                                                      .toggleTheme();
+                                                },
+                                                child: AnimatedSwitcher(
+                                                  duration: const Duration(
+                                                      milliseconds: 300),
+                                                  switchInCurve: Curves.easeIn,
+                                                  switchOutCurve:
+                                                      Curves.easeOut,
+                                                  transitionBuilder:
+                                                      (child, animation) {
+                                                    return FadeTransition(
+                                                      opacity: animation,
+                                                      child: child,
+                                                    );
+                                                  },
+                                                  child: Icon(
+                                                    isDark
+                                                        ? Icons.wb_sunny_rounded
+                                                        : Icons.nights_stay,
+                                                    key: ValueKey(isDark),
+                                                    color: KMTheme.of(context)
+                                                        .primaryText,
+                                                    size: 30,
+                                                  ),
+                                                ),
+                                              ),
                                             ),
                                           ),
-                                        ),
+                                        ],
                                       ),
-                                    if (Theme.of(context).brightness ==
-                                        Brightness.dark)
-                                      Align(
-                                        alignment: const AlignmentDirectional(
-                                            0.70, 0.25),
-                                        child: Padding(
-                                          padding: const EdgeInsetsDirectional
-                                              .fromSTEB(5, 0, 0, 0),
-                                          child: InkWell(
-                                            splashColor: Colors.transparent,
-                                            focusColor: Colors.transparent,
-                                            hoverColor: Colors.transparent,
-                                            highlightColor: Colors.transparent,
-                                            onTap: () async {
-                                              Provider.of<ThemeProvider>(
-                                                      context,
-                                                      listen: false)
-                                                  .toggleTheme();
-                                            },
-                                            child: Icon(
-                                              Icons.wb_sunny_rounded,
-                                              color: KMTheme.of(context)
-                                                  .primaryText,
-                                              size: 30,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ),

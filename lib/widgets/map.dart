@@ -103,255 +103,252 @@ class _MapsState extends State<Maps>
   Widget build(BuildContext context) {
     final mapProvider = Provider.of<MapProvider>(context);
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          if (mapProvider.location != null)
-            FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                minZoom: 2,
-                maxZoom: 18,
-                initialCenter: mapProvider.location!,
-                initialZoom: 17,
-                onTap: (tapPosition, point) async {
-                  if (widget.isGridSelectionMode) {
-                    // Reset expanded state when tapping new grid
-                    if (mounted) {
+    return Stack(
+      children: [
+        if (mapProvider.location != null)
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              minZoom: 2,
+              maxZoom: 18,
+              initialCenter: mapProvider.location!,
+              initialZoom: 17,
+              onTap: (tapPosition, point) async {
+                if (widget.isGridSelectionMode) {
+                  // Reset expanded state when tapping new grid
+                  if (mounted) {
+                    setState(() {
+                      _isListViewExpanded = false;
+                      _isLoadingGridData = true; // Start loading for new grid
+                    });
+                  }
+
+                  _pinsSubscription?.cancel();
+                  mapProvider.setMarkers([]);
+
+                  setState(() {
+                    _currentGridLocation = point;
+                    _currentCellId = getCellId(point.latitude, point.longitude);
+                    checkIfSubscribedToCurrentGrid();
+                  });
+
+                  if (_currentCellId != null) {
+                    _pinsSubscription?.cancel();
+                    await loadMarkers(customCellId: _currentCellId!);
+                  }
+                }
+              },
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+              ),
+              onMapEvent: (MapEvent mapEvent) {
+                if (mapEvent is MapEventMoveEnd && _isUsingCurrentLocation) {
+                  // User manually moved the map, stop following current location
+                  final center = mapEvent.camera.center;
+                  final currentLoc = _currentLocation;
+                  if (currentLoc != null) {
+                    final distance = const Distance()
+                        .as(LengthUnit.Meter, center, currentLoc);
+                    if (distance > 50) {
                       setState(() {
-                        _isListViewExpanded = false;
-                        _isLoadingGridData = true; // Start loading for new grid
+                        _isUsingCurrentLocation = false;
                       });
                     }
-
-                    _pinsSubscription?.cancel();
-                    mapProvider.setMarkers([]);
-
-                    setState(() {
-                      _currentGridLocation = point;
-                      _currentCellId =
-                          getCellId(point.latitude, point.longitude);
-                      checkIfSubscribedToCurrentGrid();
-                    });
-
-                    if (_currentCellId != null) {
-                      _pinsSubscription?.cancel();
-                      await loadMarkers(customCellId: _currentCellId!);
-                    }
                   }
-                },
-                interactionOptions: const InteractionOptions(
-                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                ),
-                onMapEvent: (MapEvent mapEvent) {
-                  if (mapEvent is MapEventMoveEnd && _isUsingCurrentLocation) {
-                    // User manually moved the map, stop following current location
-                    final center = mapEvent.camera.center;
-                    final currentLoc = _currentLocation;
-                    if (currentLoc != null) {
-                      final distance = const Distance()
-                          .as(LengthUnit.Meter, center, currentLoc);
-                      if (distance > 50) {
-                        setState(() {
-                          _isUsingCurrentLocation = false;
-                        });
-                      }
-                    }
-                  }
-                },
-              ),
-              children: [
-                openStreetMapTileLayer,
-                // Replace the existing polygon layer condition (around line 89-90)
-                if ((widget.isGridSelectionMode &&
-                        _currentGridLocation != null) ||
-                    (!widget.isGridSelectionMode &&
-                        _currentGridLocation != null &&
-                        _currentLocation != null))
-                  Builder(
-                    builder: (context) {
-                      LatLng loc = widget.isGridSelectionMode
-                          ? _currentGridLocation!
-                          : _currentLocation!;
-                      final cell = getCellInfo(loc.latitude, loc.longitude);
-                      final double swLat = (cell['row'] as int) *
-                          (cell['deltaLatDeg'] as double);
-                      final double swLng = (cell['col'] as int) *
-                          (cell['deltaLongDeg'] as double);
-                      final double deltaLat = cell['deltaLatDeg'] as double;
-                      final double deltaLng = cell['deltaLongDeg'] as double;
-                      final List<LatLng> corners = [
-                        LatLng(swLat, swLng), // SW
-                        LatLng(swLat, swLng + deltaLng), // SE
-                        LatLng(swLat + deltaLat, swLng + deltaLng), // NE
-                        LatLng(swLat + deltaLat, swLng), // NW
-                      ];
-                      return PolygonLayer(
-                        polygons: [
-                          Polygon(
-                            points: corners,
-                            color: Colors.blue.withOpacity(0.18),
-                            borderColor: Colors.blue.withOpacity(0.08),
-                            borderStrokeWidth: 2,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                MarkerLayer(
-                  markers: [
-                    if (_locationServiceEnabled &&
-                        _hasLocationPermission &&
-                        _currentLocation != null)
-                      Marker(
-                        point: _currentLocation!,
-                        width: 80,
-                        height: 80,
-                        child: _buildLocationMarker(
-                          location: _currentLocation!,
-                          color: Colors.blue,
-                        ),
-                      )
-                    else if (_lastKnownLocation != null)
-                      Marker(
-                        point: _lastKnownLocation!,
-                        width: 80,
-                        height: 80,
-                        child: _buildLocationMarker(
-                          location: _lastKnownLocation!,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ...mapProvider.markers,
-                  ],
-                ),
-              ],
-            ),
-
-          if (_isLoadingLocation)
-            Container(
-              color: Colors.white,
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator.adaptive(),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading map...',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          Visibility(
-            visible: widget.isGridSelectionMode && _currentCellId != null,
-            child: Positioned(
-              bottom: 35,
-              left: 6,
-              child: _isLoadingGridData
-                  ? const GridInfoCardSkeleton()
-                  : GridInfoCard(
-                      currentCellId: _currentCellId,
-                      isSubscribedToCurrentGrid: _isSubscribedToCurrentGrid,
-                      pinsInCurrentGrid: _pinsInCurrentGrid,
-                      pinsInCurrentGridList: _pinsInCurrentGridList,
-                      onToggleSubscription: toggleSubscription,
-                      onMarkerTap: _onMarkerTap,
-                      currentLocation: _currentLocation,
-                    ),
-            ),
-          ),
-          // Enhanced FAB with animation
-          Positioned(
-            bottom: widget.isGridSelectionMode ? 85 : 150,
-            right: 16,
-            child: AnimatedBuilder(
-              animation: _gridFabScaleAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _gridFabScaleAnimation.value,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: FloatingActionButton.small(
-                      heroTag: 'grid_selection_fab',
-                      onPressed: _toggleGridSelectionMode,
-                      backgroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      tooltip: widget.isGridSelectionMode.toString(),
-                      child: Icon(
-                        Icons.grid_on_rounded,
-                        color: widget.isGridSelectionMode
-                            ? Colors.blue
-                            : const Color(0xFF757575),
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                );
+                }
               },
             ),
-          ),
-
-          Positioned(
-            bottom: widget.isGridSelectionMode ? 35 : 100,
-            right: 16,
-            child: AnimatedBuilder(
-              animation: _locationFabScaleAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _locationFabScaleAnimation.value,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+            children: [
+              openStreetMapTileLayer,
+              // Replace the existing polygon layer condition (around line 89-90)
+              if ((widget.isGridSelectionMode &&
+                      _currentGridLocation != null) ||
+                  (!widget.isGridSelectionMode &&
+                      _currentGridLocation != null &&
+                      _currentLocation != null))
+                Builder(
+                  builder: (context) {
+                    LatLng loc = widget.isGridSelectionMode
+                        ? _currentGridLocation!
+                        : _currentLocation!;
+                    final cell = getCellInfo(loc.latitude, loc.longitude);
+                    final double swLat =
+                        (cell['row'] as int) * (cell['deltaLatDeg'] as double);
+                    final double swLng =
+                        (cell['col'] as int) * (cell['deltaLongDeg'] as double);
+                    final double deltaLat = cell['deltaLatDeg'] as double;
+                    final double deltaLng = cell['deltaLongDeg'] as double;
+                    final List<LatLng> corners = [
+                      LatLng(swLat, swLng), // SW
+                      LatLng(swLat, swLng + deltaLng), // SE
+                      LatLng(swLat + deltaLat, swLng + deltaLng), // NE
+                      LatLng(swLat + deltaLat, swLng), // NW
+                    ];
+                    return PolygonLayer(
+                      polygons: [
+                        Polygon(
+                          points: corners,
+                          color: Colors.blue.withOpacity(0.18),
+                          borderColor: Colors.blue.withOpacity(0.08),
+                          borderStrokeWidth: 2,
                         ),
                       ],
+                    );
+                  },
+                ),
+              MarkerLayer(
+                markers: [
+                  if (_locationServiceEnabled &&
+                      _hasLocationPermission &&
+                      _currentLocation != null)
+                    Marker(
+                      point: _currentLocation!,
+                      width: 80,
+                      height: 80,
+                      child: _buildLocationMarker(
+                        location: _currentLocation!,
+                        color: Colors.blue,
+                      ),
+                    )
+                  else if (_lastKnownLocation != null)
+                    Marker(
+                      point: _lastKnownLocation!,
+                      width: 80,
+                      height: 80,
+                      child: _buildLocationMarker(
+                        location: _lastKnownLocation!,
+                        color: Colors.grey,
+                      ),
                     ),
-                    child: FloatingActionButton.small(
-                      heroTag: 'my_location_fab',
-                      onPressed: _moveToCurrentLocation,
-                      backgroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      tooltip: _isUsingCurrentLocation.toString(),
-                      child: Icon(
-                        Icons.my_location,
-                        color: _isUsingCurrentLocation
-                            ? Colors.blue
-                            : const Color(0xFF757575),
-                        size: 24,
-                      ),
+                  ...mapProvider.markers,
+                ],
+              ),
+            ],
+          ),
+
+        if (_isLoadingLocation)
+          Container(
+            color: Colors.white,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator.adaptive(),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading map...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                );
-              },
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        Visibility(
+          visible: widget.isGridSelectionMode && _currentCellId != null,
+          child: Positioned(
+            bottom: 35,
+            left: 6,
+            child: _isLoadingGridData
+                ? const GridInfoCardSkeleton()
+                : GridInfoCard(
+                    currentCellId: _currentCellId,
+                    isSubscribedToCurrentGrid: _isSubscribedToCurrentGrid,
+                    pinsInCurrentGrid: _pinsInCurrentGrid,
+                    pinsInCurrentGridList: _pinsInCurrentGridList,
+                    onToggleSubscription: toggleSubscription,
+                    onMarkerTap: _onMarkerTap,
+                    currentLocation: _currentLocation,
+                  ),
+          ),
+        ),
+        // Enhanced FAB with animation
+        Positioned(
+          bottom: widget.isGridSelectionMode ? 85 : 150,
+          right: 16,
+          child: AnimatedBuilder(
+            animation: _gridFabScaleAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _gridFabScaleAnimation.value,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: FloatingActionButton.small(
+                    heroTag: 'grid_selection_fab',
+                    onPressed: _toggleGridSelectionMode,
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    tooltip: widget.isGridSelectionMode.toString(),
+                    child: Icon(
+                      Icons.grid_on_rounded,
+                      color: widget.isGridSelectionMode
+                          ? Colors.blue
+                          : const Color(0xFF757575),
+                      size: 24,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        Positioned(
+          bottom: widget.isGridSelectionMode ? 35 : 100,
+          right: 16,
+          child: AnimatedBuilder(
+            animation: _locationFabScaleAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _locationFabScaleAnimation.value,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: FloatingActionButton.small(
+                    heroTag: 'my_location_fab',
+                    onPressed: _moveToCurrentLocation,
+                    backgroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    tooltip: _isUsingCurrentLocation.toString(),
+                    child: Icon(
+                      Icons.my_location,
+                      color: _isUsingCurrentLocation
+                          ? Colors.blue
+                          : const Color(0xFF757575),
+                      size: 24,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
