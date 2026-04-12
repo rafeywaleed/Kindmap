@@ -73,26 +73,27 @@ class _MyAppState extends State<MyApp> {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         return MaterialApp(
-          title: 'Kindmap',
-          debugShowCheckedModeBanner: false,
-          theme: LightModeTheme().toThemeData(),
-          darkTheme: DarkModeTheme().toThemeData(),
-          themeMode: themeProvider.themeMode,
-          home: StreamBuilder(
-            stream: FirebaseAuth.instance.authStateChanges(),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                return  HomePage();
-              } else if (snapshot.hasError) {
-                return const Center(child: Text('Error'));
-              } else {
-                return const LoginForm();
-              }
-            },
-          ),
-          routes: appRoutes,
-          initialRoute: '/splash',
-        );
+            title: 'Kindmap',
+            debugShowCheckedModeBanner: false,
+            theme: LightModeTheme().toThemeData(),
+            darkTheme: DarkModeTheme().toThemeData(),
+            themeMode: themeProvider.themeMode,
+            home: StreamBuilder(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  return HomePage();
+                } else if (snapshot.hasError) {
+                  return const Center(child: Text('Error'));
+                } else {
+                  return const LoginForm();
+                }
+              },
+            ),
+            routes: appRoutes,
+            initialRoute: '/splash'
+            // initialRoute: '/home');
+            );
       },
     );
   }

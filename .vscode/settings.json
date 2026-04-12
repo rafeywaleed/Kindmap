@@ -1,4 +1,5 @@
 {
-    "java.configuration.updateBuildConfiguration": "interactive",
-    "cmake.sourceDirectory": "D:/Flutter/Exotech/kindmap/linux"
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "cmake.sourceDirectory": "D:/Flutter/Exotech/kindmap/linux",
+  "dart.flutterSdkPath": ".fvm/versions/3.29.2"
 }

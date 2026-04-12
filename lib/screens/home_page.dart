@@ -436,7 +436,7 @@ class _HomePageState extends State<HomePage>
         ),
         appBar: AppBar(
           scrolledUnderElevation: 0,
-          backgroundColor: const Color.fromARGB(255, 255, 178, 175),
+          backgroundColor: KMTheme.of(context).primaryBackground,
           iconTheme: IconThemeData(color: KMTheme.of(context).primaryText),
           automaticallyImplyLeading: true,
           leading: ClipRRect(
@@ -465,7 +465,7 @@ class _HomePageState extends State<HomePage>
           ),
           actions: const [],
           centerTitle: false,
-          elevation: 5,
+          // elevation: 5,
         ),
         body: SafeArea(
           top: true,
@@ -478,11 +478,11 @@ class _HomePageState extends State<HomePage>
               Align(
                 alignment: Alignment.topCenter,
                 child: Container(
-                  height: 10,
-                  decoration: const BoxDecoration(
-                    color: Color.fromARGB(255, 255, 184, 180),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(16),
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: KMTheme.of(context).primaryBackground,
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(30),
                       bottomRight: Radius.circular(0),
                     ),
                   ),
