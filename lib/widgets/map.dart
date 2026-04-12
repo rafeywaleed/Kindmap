@@ -9,6 +9,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kindmap/controllers/location_controller.dart';
 import 'package:kindmap/screens/pin_list_view.dart';
+import 'package:kindmap/widgets/grid_info_card.dart';
+import 'package:kindmap/widgets/grid_info_skeleton.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -92,6 +94,9 @@ class _MapsState extends State<Maps>
 
   // Expandable list view state
   bool _isListViewExpanded = false;
+  // Add this with other state variables
+  bool _isLoadingGridData = false;
+
   late AnimationController _listViewAnimationController;
 
   @override
@@ -115,6 +120,7 @@ class _MapsState extends State<Maps>
                     if (mounted) {
                       setState(() {
                         _isListViewExpanded = false;
+                        _isLoadingGridData = true; // Start loading for new grid
                       });
                     }
 
@@ -242,594 +248,22 @@ class _MapsState extends State<Maps>
                 ),
               ),
             ),
-
           Visibility(
-            visible: widget.isGridSelectionMode,
+            visible: widget.isGridSelectionMode && _currentCellId != null,
             child: Positioned(
               bottom: 35,
               left: 6,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final theme = KMTheme.of(context);
-                  // Max width = 40% of screen width, but not less than 200 and not more than 320
-                  double maxCardWidth =
-                      (MediaQuery.of(context).size.width * 0.4)
-                          .clamp(200.0, 320.0);
-
-                  return ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxCardWidth),
-                    child: GestureDetector(
-                      onHorizontalDragEnd: (details) => setState(() {
-                        _isListViewExpanded = details.primaryVelocity != null &&
-                            details.primaryVelocity! > 0;
-                      }),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOutCubic,
-                        height: _isListViewExpanded
-                            ? MediaQuery.of(context).size.height * 0.8
-                            : null,
-                        child: Material(
-                          elevation: 8,
-                          shadowColor: theme.primaryText.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: theme.secondaryBackground,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: _isListViewExpanded
-                                ? Column(
-                                    children: [
-                                      Icon(
-                                        Icons.keyboard_arrow_down_rounded,
-                                        size: 24,
-                                        color: theme.secondaryText,
-                                      ),
-                                      // Header section (always visible)
-                                      Padding(
-                                        padding: const EdgeInsets.all(16),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            // Header: Grid ID with status dot
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    'Grid ${_currentCellId.toString()}',
-                                                    style: theme.titleSmall
-                                                        .copyWith(
-                                                      color: theme.primaryText,
-                                                      fontSize: 17,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      letterSpacing: -0.3,
-                                                    ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                                Container(
-                                                  width: 8,
-                                                  height: 8,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color:
-                                                        _isSubscribedToCurrentGrid
-                                                            ? theme.success
-                                                            : theme
-                                                                .secondaryText,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 14),
-
-                                            // People count
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.people_outline_rounded,
-                                                  size: 16,
-                                                  color: theme.secondaryText,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Flexible(
-                                                  child: Text(
-                                                    '$_pinsInCurrentGrid ${_pinsInCurrentGrid == 1 ? 'person needs' : 'people need'} help',
-                                                    style: theme.labelMedium
-                                                        .copyWith(
-                                                      fontSize: 13,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                    ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 16),
-
-                                            // Divider for visual separation
-                                            Container(
-                                              height: 1,
-                                              color: theme.lineColor,
-                                            ),
-                                            const SizedBox(height: 16),
-
-                                            // Action buttons
-                                            Column(
-                                              children: [
-                                                // Subscribe/Unsubscribe button
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: ElevatedButton.icon(
-                                                    onPressed:
-                                                        toggleSubscription,
-                                                    icon: Icon(
-                                                      _isSubscribedToCurrentGrid
-                                                          ? Icons
-                                                              .notifications_off
-                                                          : Icons
-                                                              .notifications_active,
-                                                      size: 18,
-                                                      color:
-                                                          theme.primaryBtnText,
-                                                    ),
-                                                    label: Text(
-                                                      _isSubscribedToCurrentGrid
-                                                          ? 'Unsubscribe'
-                                                          : 'Subscribe',
-                                                      style: theme.labelMedium
-                                                          .copyWith(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: theme
-                                                            .primaryBtnText,
-                                                      ),
-                                                    ),
-                                                    style: ElevatedButton
-                                                        .styleFrom(
-                                                      backgroundColor:
-                                                          _isSubscribedToCurrentGrid
-                                                              ? theme.error
-                                                              : theme.success,
-                                                      foregroundColor:
-                                                          theme.primaryBtnText,
-                                                      elevation: 0,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12),
-                                                      ),
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 10),
-                                                    ),
-                                                  ),
-                                                ),
-                                                // Hide List button
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: OutlinedButton.icon(
-                                                    onPressed: () {
-                                                      setState(() {
-                                                        _isListViewExpanded =
-                                                            false;
-                                                      });
-                                                    },
-                                                    icon: Icon(
-                                                      Icons.list_alt,
-                                                      size: 18,
-                                                      color: theme.primaryText,
-                                                    ),
-                                                    label: Text(
-                                                      'Hide List',
-                                                      style: theme.labelMedium
-                                                          .copyWith(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                    style: OutlinedButton
-                                                        .styleFrom(
-                                                      foregroundColor:
-                                                          theme.primaryText,
-                                                      side: BorderSide(
-                                                        color: theme.lineColor,
-                                                        width: 1.5,
-                                                      ),
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12),
-                                                      ),
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          vertical: 10),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 10),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // Divider
-                                      Divider(
-                                        color: theme.lineColor,
-                                        height: 1,
-                                        thickness: 1,
-                                      ),
-                                      // List view
-                                      Expanded(
-                                        child: _pinsInCurrentGridList.isEmpty
-                                            ? Center(
-                                                child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Icon(
-                                                      Icons
-                                                          .location_off_outlined,
-                                                      size: 48,
-                                                      color:
-                                                          theme.secondaryText,
-                                                    ),
-                                                    const SizedBox(height: 12),
-                                                    Text(
-                                                      'No pins in this grid',
-                                                      style: theme.bodyMedium,
-                                                    ),
-                                                  ],
-                                                ),
-                                              )
-                                            : ListView.builder(
-                                                itemCount:
-                                                    _pinsInCurrentGridList
-                                                        .length,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 8),
-                                                itemBuilder: (context, index) {
-                                                  final pin =
-                                                      _pinsInCurrentGridList[
-                                                          index];
-                                                  return GestureDetector(
-                                                    onTap: () {
-                                                      _onMarkerTap(
-                                                        LatLng(
-                                                          pin.latitude,
-                                                          pin.longitude,
-                                                        ),
-                                                        pin,
-                                                      );
-                                                    },
-                                                    child: Padding(
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 0,
-                                                          vertical: 4),
-                                                      child: Container(
-                                                        height: 100,
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(8),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: theme
-                                                              .secondaryBackground,
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(12),
-                                                        ),
-                                                        child: Row(
-                                                          children: [
-                                                            ClipRRect(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          8),
-                                                              child: pin.imageBase64 !=
-                                                                      null
-                                                                  ? Image
-                                                                      .memory(
-                                                                      base64Decode(
-                                                                          pin.imageBase64!),
-                                                                      fit: BoxFit
-                                                                          .cover,
-                                                                      width: MediaQuery.of(context)
-                                                                              .size
-                                                                              .width *
-                                                                          0.15,
-                                                                      height: MediaQuery.of(context)
-                                                                              .size
-                                                                              .width *
-                                                                          0.15,
-                                                                      errorBuilder: (context,
-                                                                              error,
-                                                                              stackTrace) =>
-                                                                          Container(
-                                                                        width: MediaQuery.of(context).size.width *
-                                                                            0.15,
-                                                                        height: MediaQuery.of(context).size.width *
-                                                                            0.15,
-                                                                        color: theme
-                                                                            .lineColor,
-                                                                        child: const Icon(
-                                                                            Icons.error),
-                                                                      ),
-                                                                    )
-                                                                  : Container(
-                                                                      width: MediaQuery.of(context)
-                                                                              .size
-                                                                              .width *
-                                                                          0.15,
-                                                                      height: MediaQuery.of(context)
-                                                                              .size
-                                                                              .width *
-                                                                          0.15,
-                                                                      color: theme
-                                                                          .lineColor,
-                                                                      child: const Icon(
-                                                                          Icons
-                                                                              .image_not_supported),
-                                                                    ),
-                                                            ),
-                                                            const SizedBox(
-                                                                width: 8),
-                                                            Expanded(
-                                                              child: Column(
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .start,
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .center,
-                                                                children: [
-                                                                  Text(
-                                                                    '${Geolocator.distanceBetween(pin.latitude, pin.longitude, _currentLocation?.latitude ?? 0, _currentLocation?.longitude ?? 0).round()} m',
-                                                                    style: theme
-                                                                        .bodyMedium
-                                                                        .copyWith(
-                                                                      fontSize:
-                                                                          12,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600,
-                                                                    ),
-                                                                  ),
-                                                                  const SizedBox(
-                                                                      height:
-                                                                          4),
-                                                                  Text(
-                                                                    pin.note ??
-                                                                        '',
-                                                                    maxLines: 1,
-                                                                    overflow:
-                                                                        TextOverflow
-                                                                            .ellipsis,
-                                                                    style: theme
-                                                                        .bodyMedium
-                                                                        .copyWith(
-                                                                      fontSize:
-                                                                          11,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w400,
-                                                                    ),
-                                                                  ),
-                                                                  const SizedBox(
-                                                                      height:
-                                                                          4),
-                                                                  Text(
-                                                                    '${pin.timer} hrs',
-                                                                    style: theme
-                                                                        .bodyMedium
-                                                                        .copyWith(
-                                                                      fontSize:
-                                                                          11,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w500,
-                                                                      color: theme
-                                                                          .error,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                      ),
-                                    ],
-                                  )
-                                : Padding(
-                                    padding: const EdgeInsets.all(16),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      // crossAxisAlignment:
-                                      //     CrossAxisAlignment.start,
-                                      children: [
-                                        Icon(
-                                          Icons.keyboard_arrow_up_rounded,
-                                          size: 24,
-                                          color: theme.secondaryText,
-                                        ),
-                                        // Header: Grid ID with status dot
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                'Grid ${_currentCellId.toString()}',
-                                                style:
-                                                    theme.titleSmall.copyWith(
-                                                  color: theme.primaryText,
-                                                  fontSize: 17,
-                                                  fontWeight: FontWeight.w600,
-                                                  letterSpacing: -0.3,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color:
-                                                    _isSubscribedToCurrentGrid
-                                                        ? theme.success
-                                                        : theme.secondaryText,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 14),
-
-                                        // People count
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.people_outline_rounded,
-                                              size: 16,
-                                              color: theme.secondaryText,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Flexible(
-                                              child: Text(
-                                                '$_pinsInCurrentGrid ${_pinsInCurrentGrid == 1 ? 'person needs' : 'people need'} help',
-                                                style:
-                                                    theme.labelMedium.copyWith(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 16),
-
-                                        // Divider for visual separation
-                                        Container(
-                                          height: 1,
-                                          color: theme.lineColor,
-                                        ),
-                                        const SizedBox(height: 16),
-
-                                        // Action buttons - VERTICAL STACK (full width, full text)
-                                        Column(
-                                          children: [
-                                            // Subscribe/Unsubscribe button (full width)
-                                            SizedBox(
-                                              width: double.infinity,
-                                              child: ElevatedButton.icon(
-                                                onPressed: toggleSubscription,
-                                                icon: Icon(
-                                                  _isSubscribedToCurrentGrid
-                                                      ? Icons.notifications_off
-                                                      : Icons
-                                                          .notifications_active,
-                                                  size: 18,
-                                                  color: theme.primaryBtnText,
-                                                ),
-                                                label: Text(
-                                                  _isSubscribedToCurrentGrid
-                                                      ? 'Unsubscribe'
-                                                      : 'Subscribe',
-                                                  style: theme.labelMedium
-                                                      .copyWith(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: theme.primaryBtnText,
-                                                  ),
-                                                ),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      _isSubscribedToCurrentGrid
-                                                          ? theme.error
-                                                          : theme.success,
-                                                  foregroundColor:
-                                                      theme.primaryBtnText,
-                                                  elevation: 0,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                  ),
-                                                  padding: const EdgeInsets
-                                                      .symmetric(vertical: 10),
-                                                ),
-                                              ),
-                                            ),
-                                            // View List button
-                                            SizedBox(
-                                              width: double.infinity,
-                                              child: OutlinedButton.icon(
-                                                onPressed: () {
-                                                  setState(() {
-                                                    _isListViewExpanded = true;
-                                                  });
-                                                },
-                                                icon: Icon(
-                                                  Icons.list_alt,
-                                                  size: 18,
-                                                  color: theme.primaryText,
-                                                ),
-                                                label: Text(
-                                                  'View List',
-                                                  style: theme.labelMedium
-                                                      .copyWith(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                style: OutlinedButton.styleFrom(
-                                                  foregroundColor:
-                                                      theme.primaryText,
-                                                  side: BorderSide(
-                                                    color: theme.lineColor,
-                                                    width: 1.5,
-                                                  ),
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12),
-                                                  ),
-                                                  padding: const EdgeInsets
-                                                      .symmetric(vertical: 10),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 10),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
+              child: _isLoadingGridData
+                  ? const GridInfoCardSkeleton()
+                  : GridInfoCard(
+                      currentCellId: _currentCellId,
+                      isSubscribedToCurrentGrid: _isSubscribedToCurrentGrid,
+                      pinsInCurrentGrid: _pinsInCurrentGrid,
+                      pinsInCurrentGridList: _pinsInCurrentGridList,
+                      onToggleSubscription: toggleSubscription,
+                      onMarkerTap: _onMarkerTap,
+                      currentLocation: _currentLocation,
                     ),
-                  );
-                },
-              ),
             ),
           ),
           // Enhanced FAB with animation
@@ -960,18 +394,21 @@ class _MapsState extends State<Maps>
     final mapProvider = Provider.of<MapProvider>(context, listen: false);
     List<Marker> allMarkers = [];
 
-    // Clear existing markers immediately
-    mapProvider.setMarkers([]);
-
-    // Reset pins list while loading
+    // Set loading state
     setState(() {
+      _isLoadingGridData = true;
       _pinsInCurrentGrid = 0;
       _pinsInCurrentGridList = [];
     });
 
     final LatLng? loc =
         mapProvider.location ?? _currentLocation ?? _lastKnownLocation;
-    if (loc == null) return;
+    if (loc == null) {
+      setState(() {
+        _isLoadingGridData = false;
+      });
+      return;
+    }
 
     try {
       final List<Pin> markersSnapshot;
@@ -985,11 +422,10 @@ class _MapsState extends State<Maps>
 
       log("Loaded ${markersSnapshot.length} pins for grid: ${customCellId ?? _currentCellId}");
 
-      setState(() {
-        _pinsInCurrentGrid = markersSnapshot.length;
-        _pinsInCurrentGridList = markersSnapshot;
-      });
+      // Clear existing markers first
+      mapProvider.setMarkers([]);
 
+      // Build new markers
       for (Pin pin in markersSnapshot) {
         final data = pin.toJson();
         final latitude = data['latitude'];
@@ -1002,12 +438,20 @@ class _MapsState extends State<Maps>
         ));
       }
 
+      // Update state with results
+      setState(() {
+        _pinsInCurrentGrid = markersSnapshot.length;
+        _pinsInCurrentGridList = markersSnapshot;
+        _isLoadingGridData = false;
+      });
+
       mapProvider.setMarkers(allMarkers);
     } catch (e) {
       log('Error loading markers: $e');
       setState(() {
         _pinsInCurrentGrid = 0;
         _pinsInCurrentGridList = [];
+        _isLoadingGridData = false;
       });
     }
   }
