@@ -188,7 +188,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           }
                         },
                         child: Hero(
-                          tag: 'profileAvatar',
+                          tag: 'profile-avatar',
                           child: Container(
                               width: size.width * 0.3,
                               height: size.width * 0.3,

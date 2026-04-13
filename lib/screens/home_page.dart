@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:kindmap/widgets/location_dialog.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -43,16 +45,12 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _requestPermissions() async {
-    final hasNotificationPermission =
+    final hasNotification =
         await PermissionService.handleNotificationPermission();
-    if (!hasNotificationPermission) {
-      if (mounted) {
-        _showPermissionDialog(
-          'Notifications',
-          'Enable notifications to stay updated with nearby help requests.',
-          'notification',
-        );
-      }
+    if (!hasNotification && mounted) {
+      // Small delay so the map renders first — feels more intentional
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (mounted) showNotificationPermissionDialog(context);
     }
   }
 
@@ -102,34 +100,38 @@ class _HomePageState extends State<HomePage>
       child: Scaffold(
         backgroundColor: KMTheme.of(context).alternate,
         endDrawer: _KindMapDrawer(size: size, profile: profile),
-        appBar: AppBar(
-          scrolledUnderElevation: 0,
-          backgroundColor: KMTheme.of(context).primaryBackground,
-          iconTheme: IconThemeData(color: KMTheme.of(context).primaryText),
-          automaticallyImplyLeading: true,
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Image.asset('assets/images/KindMap-logo-f.png',
-                  fit: BoxFit.cover),
-            ),
-          ),
-          title: Align(
-            alignment: const AlignmentDirectional(-1, 0),
-            child: Text(
-              'KindMap',
-              style: KMTheme.of(context).titleMedium.copyWith(
-                    fontFamily: 'Plus Jakarta Sans',
-                    color: KMTheme.of(context).primaryText,
-                    fontSize: 24,
-                    letterSpacing: 0,
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-          ),
-          centerTitle: false,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(64),
+          child: _KindMapAppBar(profile: profile),
         ),
+        // appBar: AppBar(
+        //   scrolledUnderElevation: 0,
+        //   backgroundColor: KMTheme.of(context).primaryBackground,
+        //   iconTheme: IconThemeData(color: KMTheme.of(context).primaryText),
+        //   automaticallyImplyLeading: true,
+        //   leading: ClipRRect(
+        //     borderRadius: BorderRadius.circular(8),
+        //     child: Padding(
+        //       padding: const EdgeInsets.all(8),
+        //       child: Image.asset('assets/images/KindMap-logo-f.png',
+        //           fit: BoxFit.cover),
+        //     ),
+        //   ),
+        //   title: Align(
+        //     alignment: const AlignmentDirectional(-1, 0),
+        //     child: Text(
+        //       'KindMap',
+        //       style: KMTheme.of(context).titleMedium.copyWith(
+        //             fontFamily: 'Plus Jakarta Sans',
+        //             color: KMTheme.of(context).primaryText,
+        //             fontSize: 24,
+        //             letterSpacing: 0,
+        //             fontWeight: FontWeight.w800,
+        //           ),
+        //     ),
+        //   ),
+        //   centerTitle: false,
+        // ),
         body: SafeArea(
           top: true,
           child: Stack(
@@ -142,7 +144,7 @@ class _HomePageState extends State<HomePage>
               Align(
                 alignment: Alignment.topCenter,
                 child: Container(
-                  height: 20,
+                  height: 8,
                   decoration: BoxDecoration(
                     color: KMTheme.of(context).primaryBackground,
                     borderRadius: const BorderRadius.only(
@@ -420,7 +422,248 @@ class _KindMapDrawerState extends State<_KindMapDrawer>
     );
   }
 }
+// ═══════════════════════════════════════════════════════════════
+// APP BAR
+// ═══════════════════════════════════════════════════════════════
 
+class _KindMapAppBar extends StatefulWidget implements PreferredSizeWidget {
+  final ProfileProvider profile;
+  const _KindMapAppBar({required this.profile});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(64);
+
+  @override
+  State<_KindMapAppBar> createState() => _KindMapAppBarState();
+}
+
+class _KindMapAppBarState extends State<_KindMapAppBar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _entranceCtrl;
+  late Animation<double> _logoFade;
+  late Animation<Offset> _logoSlide;
+  late Animation<double> _titleFade;
+  late Animation<Offset> _titleSlide;
+  late Animation<double> _menuFade;
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _logoFade = CurvedAnimation(
+      parent: _entranceCtrl,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+    );
+    _logoSlide = Tween<Offset>(
+      begin: const Offset(-0.4, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceCtrl,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
+    ));
+    _titleFade = CurvedAnimation(
+      parent: _entranceCtrl,
+      curve: const Interval(0.15, 0.65, curve: Curves.easeOut),
+    );
+    _titleSlide = Tween<Offset>(
+      begin: const Offset(-0.2, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceCtrl,
+      curve: const Interval(0.15, 0.65, curve: Curves.easeOutCubic),
+    ));
+    _menuFade = CurvedAnimation(
+      parent: _entranceCtrl,
+      curve: const Interval(0.4, 0.9, curve: Curves.easeOut),
+    );
+
+    _entranceCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _entranceCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = KMTheme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.primaryBackground,
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 64,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                // Logo
+                SlideTransition(
+                  position: _logoSlide,
+                  child: FadeTransition(
+                    opacity: _logoFade,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: Image.asset(
+                          'assets/images/KindMap-logo-f.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 10),
+
+                // Title
+                SlideTransition(
+                  position: _titleSlide,
+                  child: FadeTransition(
+                    opacity: _titleFade,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'KindMap',
+                          style: theme.titleMedium.copyWith(
+                            fontFamily: 'Plus Jakarta Sans',
+                            color: theme.primaryText,
+                            fontSize: 22,
+                            letterSpacing: -0.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Help is near',
+                          style: theme.bodySmall.copyWith(
+                            color: theme.secondaryText.withOpacity(0.6),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const Spacer(),
+
+                // Menu button (opens endDrawer)
+                FadeTransition(
+                  opacity: _menuFade,
+                  child: _AppBarMenuButton(theme: theme),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppBarMenuButton extends StatefulWidget {
+  final KMTheme theme;
+  const _AppBarMenuButton({required this.theme});
+
+  @override
+  State<_AppBarMenuButton> createState() => _AppBarMenuButtonState();
+}
+
+class _AppBarMenuButtonState extends State<_AppBarMenuButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pressCtrl;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+      reverseDuration: const Duration(milliseconds: 250),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.88).animate(
+      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+
+    return ScaleTransition(
+      scale: _scaleAnim,
+      child: GestureDetector(
+        onTapDown: (_) => _pressCtrl.forward(),
+        onTapUp: (_) {
+          _pressCtrl.reverse();
+          HapticFeedback.lightImpact();
+          Scaffold.of(context).openEndDrawer();
+        },
+        onTapCancel: () => _pressCtrl.reverse(),
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: theme.primaryText.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: theme.primaryText.withOpacity(0.07),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _MenuLine(width: 16, theme: theme),
+              const SizedBox(height: 4),
+              _MenuLine(width: 11, theme: theme),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuLine extends StatelessWidget {
+  final double width;
+  final KMTheme theme;
+  const _MenuLine({required this.width, required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: 2,
+      decoration: BoxDecoration(
+        color: theme.primaryText.withOpacity(0.65),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+}
 // ═══════════════════════════════════════════════════════════════
 // ANIMATED BACKGROUND
 // ═══════════════════════════════════════════════════════════════
@@ -710,27 +953,30 @@ class _PulsingAvatarState extends State<_PulsingAvatar>
           ),
 
           // Avatar
-          Container(
-            width: avatarSize,
-            height: avatarSize,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: theme.primary.withOpacity(0.7),
-                width: 2.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: theme.primary.withOpacity(0.25),
-                  blurRadius: 20,
-                  spreadRadius: 2,
+          Hero(
+            tag: 'profile-avatar',
+            child: Container(
+              width: avatarSize,
+              height: avatarSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: theme.primary.withOpacity(0.7),
+                  width: 2.5,
                 ),
-              ],
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/avatar${widget.profile.avatarIndex ?? 1}.png',
-                fit: BoxFit.cover,
+                boxShadow: [
+                  BoxShadow(
+                    color: theme.primary.withOpacity(0.25),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/avatar${widget.profile.avatarIndex ?? 1}.png',
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),

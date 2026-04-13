@@ -134,7 +134,7 @@ class LightModeTheme extends KMTheme {
   // late Color lineColor = Color(0xFFFFE0E3E7);
   // late Color backgroundComponents = Color(0xFF1D2428);
   late Color splashBackground = Colors.white;
-  late Color primary = const Color(0xD6E5151E);
+  late Color primary = const Color.fromARGB(212, 0, 0, 0);
   late Color secondary = const Color(0xFFFFFFFF);
   late Color tertiary = const Color(0xFFFAC6C3);
   late Color alternate = const Color(0xFFC28C89);

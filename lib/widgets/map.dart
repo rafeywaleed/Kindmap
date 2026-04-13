@@ -10,6 +10,7 @@ import 'package:kindmap/controllers/location_controller.dart';
 import 'package:kindmap/screens/pin_list_view.dart';
 import 'package:kindmap/widgets/grid_info_card.dart';
 import 'package:kindmap/widgets/grid_info_skeleton.dart';
+import 'package:kindmap/widgets/location_dialog.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -384,7 +385,7 @@ class _MapsState extends State<Maps>
 
         // ── Grid FAB ────────────────────────────────────────────────
         Positioned(
-          bottom: widget.isGridSelectionMode ? 85 : 150,
+          bottom: widget.isGridSelectionMode ? 85 : 160,
           right: 16,
           child: AnimatedBuilder(
             animation: _gridFabScaleAnimation,
@@ -404,7 +405,7 @@ class _MapsState extends State<Maps>
 
         // ── Location FAB ─────────────────────────────────────────────
         Positioned(
-          bottom: widget.isGridSelectionMode ? 35 : 100,
+          bottom: widget.isGridSelectionMode ? 35 : 110,
           right: 16,
           child: AnimatedBuilder(
             animation: _locationFabScaleAnimation,
@@ -810,47 +811,61 @@ class _MapsState extends State<Maps>
     _markerAnimationController.forward();
     _moveToMarker(markerLocation);
 
-    showModalBottomSheet(
+    showPinBox(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return PinBox(
-          pin: pin,
-          location: Provider.of<MapProvider>(context, listen: false).location ??
-              const LatLng(0, 0),
-          onServe: () async {
-            try {
-              await PinController().deletePin(pin.pinId);
-              final mapProvider =
-                  Provider.of<MapProvider>(context, listen: false);
-              final updatedMarkers = mapProvider.markers
-                  .where((marker) => marker.point != markerLocation)
-                  .toList();
-              mapProvider.setMarkers(updatedMarkers);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Row(children: [
-                    Icon(Icons.check_circle, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text('Thank you for helping!'),
-                  ]),
-                  backgroundColor: Colors.green,
-                  behavior: SnackBarBehavior.floating,
-                ));
-              }
-              if (context.mounted) Navigator.pop(context);
-            } catch (e) {
-              debugPrint('Error removing pin: $e');
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text('Error removing pin: $e'),
-                  backgroundColor: Colors.red,
-                ));
-              }
-            }
-          },
-        );
+      pin: pin,
+      userLocation: Provider.of<MapProvider>(context, listen: false).location ??
+          const LatLng(0, 0),
+      onServe: () async {
+        try {
+          await PinController().deletePin(pin.pinId);
+          final mapProvider = Provider.of<MapProvider>(context, listen: false);
+          final updatedMarkers = mapProvider.markers
+              .where((m) => m.point != markerLocation)
+              .toList();
+          mapProvider.setMarkers(updatedMarkers);
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Row(children: [
+                  Icon(Icons.volunteer_activism_rounded,
+                      color: Colors.white, size: 18),
+                  SizedBox(width: 8),
+                  Text('Thank you for helping!',
+                      style: TextStyle(fontSize: 14)),
+                ]),
+                backgroundColor: const Color(0xFF0F6E56),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                margin: const EdgeInsets.all(12),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+            Navigator.pop(context);
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(children: [
+                  const Icon(Icons.error_outline_rounded,
+                      color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text('Could not mark as served: $e',
+                          style: const TextStyle(fontSize: 13))),
+                ]),
+                backgroundColor: const Color(0xFFA32D2D),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                margin: const EdgeInsets.all(12),
+              ),
+            );
+          }
+        }
       },
     ).then((_) {
       setState(() => _selectedMarkerLocation = null);
@@ -1012,100 +1027,16 @@ class _MapsState extends State<Maps>
 
   void _showLocationServiceDialog() {
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        final theme = KMTheme.of(context);
-        return AlertDialog(
-          backgroundColor: theme.primaryBackground,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(children: [
-            Container(
-              decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.all(8),
-              child: const Icon(Icons.location_disabled, color: Colors.red),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-                child: Text('Location Services Disabled',
-                    style: TextStyle(fontWeight: FontWeight.w700))),
-          ]),
-          content: const Text(
-              'Please enable location services to show your current position on the map.',
-              style: TextStyle(fontSize: 15)),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel')),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.settings, size: 18),
-              label: const Text('Enable'),
-              style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10))),
-              onPressed: () async {
-                Navigator.pop(context);
-                await Geolocator.openLocationSettings();
-                _startLocationServiceCheck();
-              },
-            ),
-          ],
-        );
-      },
-    );
+    showLocationServiceDialog(context).then((_) {
+      _startLocationServiceCheck();
+    });
   }
 
   void _showPermissionDeniedDialog() {
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(10)),
-            child:
-                const Icon(Icons.location_off, color: Colors.orange, size: 24),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(child: Text('Location Permission Required')),
-        ]),
-        content: const Text(
-          'To show your current location and provide the best experience, please grant location permission in your device settings.',
-          style: TextStyle(fontSize: 15),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showLastKnownLocationFallback();
-            },
-            child: const Text('Continue Without'),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.settings, size: 18),
-            label: const Text('Open Settings'),
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              Navigator.pop(context);
-              await Geolocator.openAppSettings();
-              await Future.delayed(const Duration(seconds: 1));
-              await _checkAndRequestPermissions();
-            },
-          ),
-        ],
-      ),
+    showLocationPermissionDialog(
+      context,
+      onSkip: _showLastKnownLocationFallback,
     );
   }
 
@@ -1219,12 +1150,12 @@ class _MapFabState extends State<_MapFab> with SingleTickerProviderStateMixin {
               height: 44,
               decoration: BoxDecoration(
                 color: widget.isActive
-                    ? theme.primaryText.withOpacity(0.15)
+                    ? theme.primary.withOpacity(0.15)
                     : theme.secondaryBackground,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: widget.isActive
-                      ? theme.primaryText.withOpacity(0.5)
+                      ? theme.primary.withOpacity(0.5)
                       : theme.primaryText.withOpacity(0.15),
                   width: 1.5,
                 ),
@@ -1237,7 +1168,8 @@ class _MapFabState extends State<_MapFab> with SingleTickerProviderStateMixin {
                   ),
                   // Add a subtle white outer glow when dark mode is active
                   if (Theme.of(context).brightness == Brightness.dark ||
-                      Theme.of(context).brightness == Brightness.light)
+                      (Theme.of(context).brightness == Brightness.light &&
+                          widget.isActive))
                     BoxShadow(
                       color: Colors.white.withOpacity(0.15),
                       blurRadius: 8,
@@ -1252,8 +1184,7 @@ class _MapFabState extends State<_MapFab> with SingleTickerProviderStateMixin {
                 child: Icon(
                   widget.icon,
                   size: 20,
-                  color:
-                      widget.isActive ? theme.primaryText : theme.secondaryText,
+                  color: widget.isActive ? theme.primary : theme.secondaryText,
                 ),
               ),
             ),
