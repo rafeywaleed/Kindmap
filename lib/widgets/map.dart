@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -24,25 +23,54 @@ import '../providers/map_provider.dart';
 import '../services/get_cell_info.dart';
 import 'pin_box.dart';
 
-TileLayer get openStreetMapTileLayer => TileLayer(
-      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+// =============================================
+// MapStyle Model
+// =============================================
+class MapStyle {
+  final String name;
+  final String urlTemplate;
+  final List<String>? subdomains;
+  final String attribution;
+  final bool hasRetinaSupport;
+  final double maxZoom;
+  final int maxNativeZoom;
+
+  const MapStyle({
+    required this.name,
+    required this.urlTemplate,
+    this.subdomains,
+    required this.attribution,
+    this.hasRetinaSupport = false,
+    this.maxZoom = 20,
+    this.maxNativeZoom = 18,
+  });
+
+  TileLayer toTileLayer() {
+    return TileLayer(
+      urlTemplate: urlTemplate,
       userAgentPackageName: 'com.kindmap.kindmap',
-      maxNativeZoom: 18,
-      maxZoom: 20,
-      additionalOptions: const {
-        'attribution': '© OpenStreetMap contributors',
+      subdomains: subdomains ?? const [],
+      maxZoom: maxZoom,
+      maxNativeZoom: maxNativeZoom,
+      retinaMode: true,
+      // hasRetinaSupport ? RetinaMode.isHighDensity : RetinaMode.disabled,
+      additionalOptions: {
+        'attribution': attribution,
       },
     );
+  }
+}
 
 class Maps extends StatefulWidget {
   final bool isGridSelectionMode;
   final VoidCallback? toggleGridSelectionMode;
   final Function(bool)? setGridSelectionMode;
-  const Maps(
-      {super.key,
-      this.isGridSelectionMode = false,
-      this.toggleGridSelectionMode,
-      this.setGridSelectionMode});
+  const Maps({
+    super.key,
+    this.isGridSelectionMode = false,
+    this.toggleGridSelectionMode,
+    this.setGridSelectionMode,
+  });
 
   @override
   State<Maps> createState() => _MapsState();
@@ -50,6 +78,9 @@ class Maps extends StatefulWidget {
 
 class _MapsState extends State<Maps>
     with TickerProviderStateMixin, WidgetsBindingObserver {
+  // =============================================
+  // Location & Map State
+  // =============================================
   late Stream<Position>? positionStream;
   LatLng? _currentLocation;
   LatLng? _lastKnownLocation;
@@ -73,11 +104,67 @@ class _MapsState extends State<Maps>
 
   final MapController _mapController = MapController();
 
-  // Animation controllers
+  // =============================================
+  // Map Style Configuration
+  // =============================================
+  final List<MapStyle> _mapStyles = const [
+    MapStyle(
+      name: 'OpenStreetMap',
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '© OpenStreetMap',
+    ),
+    MapStyle(
+      name: 'CartoDB Voyager',
+      urlTemplate:
+          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      subdomains: ['a', 'b', 'c', 'd'],
+      attribution: '© OpenStreetMap, © CartoDB',
+      hasRetinaSupport: true,
+    ),
+    MapStyle(
+      name: 'CartoDB Positron',
+      urlTemplate:
+          'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b', 'c', 'd'],
+      attribution: '© OpenStreetMap, © CartoDB',
+    ),
+    MapStyle(
+      name: 'CartoDB Dark Matter',
+      urlTemplate:
+          'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b', 'c', 'd'],
+      attribution: '© OpenStreetMap, © CartoDB',
+    ),
+    MapStyle(
+      name: 'OpenTopoMap',
+      urlTemplate: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b', 'c'],
+      attribution: '© OpenStreetMap contributors, SRTM',
+    ),
+    MapStyle(
+      name: 'Esri Satellite',
+      urlTemplate:
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: '© Esri',
+    ),
+    MapStyle(
+      name: 'Humanitarian',
+      urlTemplate: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b'],
+      attribution: '© OpenStreetMap contributors',
+    ),
+  ];
+
+  late MapStyle _currentMapStyle;
+
+  // =============================================
+  // Animation Controllers
+  // =============================================
   late AnimationController _locationFabAnimationController;
   late AnimationController _gridFabAnimationController;
   late AnimationController _markerAnimationController;
   late AnimationController _pulseAnimationController;
+  late AnimationController _listViewAnimationController;
 
   late Animation<double> _locationFabScaleAnimation;
   late Animation<double> _gridFabScaleAnimation;
@@ -92,19 +179,52 @@ class _MapsState extends State<Maps>
   ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
       _locationLoadingSnackBar;
 
-  // Expandable list view state
   bool _isListViewExpanded = false;
-  // Add this with other state variables
   bool _isLoadingGridData = false;
 
-  late AnimationController _listViewAnimationController;
+  // =============================================
+  // Lifecycle Methods
+  // =============================================
+  @override
+  void initState() {
+    super.initState();
+    _currentMapStyle = _mapStyles[0]; // default
+    WidgetsBinding.instance.addObserver(this);
+    _initAnimations();
+    _initializeMap();
+  }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _locationFabAnimationController.dispose();
+    _gridFabAnimationController.dispose();
+    _markerAnimationController.dispose();
+    _pulseAnimationController.dispose();
+    _listViewAnimationController.dispose();
+    _locationCheckTimer?.cancel();
+    _positionSubscription?.cancel();
+    _pinsSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkLocationService();
+    }
+  }
+
+  // =============================================
+  // Build Method
+  // =============================================
   @override
   Widget build(BuildContext context) {
     final mapProvider = Provider.of<MapProvider>(context);
 
     return Stack(
       children: [
+        // ---------- FlutterMap ----------
         if (mapProvider.location != null)
           FlutterMap(
             mapController: _mapController,
@@ -115,23 +235,19 @@ class _MapsState extends State<Maps>
               initialZoom: 17,
               onTap: (tapPosition, point) async {
                 if (widget.isGridSelectionMode) {
-                  // Reset expanded state when tapping new grid
                   if (mounted) {
                     setState(() {
                       _isListViewExpanded = false;
-                      _isLoadingGridData = true; // Start loading for new grid
+                      _isLoadingGridData = true;
                     });
                   }
-
                   _pinsSubscription?.cancel();
                   mapProvider.setMarkers([]);
-
                   setState(() {
                     _currentGridLocation = point;
                     _currentCellId = getCellId(point.latitude, point.longitude);
                     checkIfSubscribedToCurrentGrid();
                   });
-
                   if (_currentCellId != null) {
                     _pinsSubscription?.cancel();
                     await loadMarkers(customCellId: _currentCellId!);
@@ -143,7 +259,6 @@ class _MapsState extends State<Maps>
               ),
               onMapEvent: (MapEvent mapEvent) {
                 if (mapEvent is MapEventMoveEnd && _isUsingCurrentLocation) {
-                  // User manually moved the map, stop following current location
                   final center = mapEvent.camera.center;
                   final currentLoc = _currentLocation;
                   if (currentLoc != null) {
@@ -159,8 +274,10 @@ class _MapsState extends State<Maps>
               },
             ),
             children: [
-              openStreetMapTileLayer,
-              // Replace the existing polygon layer condition (around line 89-90)
+              // ----- Dynamic Tile Layer -----
+              _currentMapStyle.toTileLayer(),
+
+              // ----- Grid Polygon Layer -----
               if ((widget.isGridSelectionMode &&
                       _currentGridLocation != null) ||
                   (!widget.isGridSelectionMode &&
@@ -196,6 +313,8 @@ class _MapsState extends State<Maps>
                     );
                   },
                 ),
+
+              // ----- Markers Layer -----
               MarkerLayer(
                 markers: [
                   if (_locationServiceEnabled &&
@@ -226,6 +345,7 @@ class _MapsState extends State<Maps>
             ],
           ),
 
+        // ---------- Loading Overlay ----------
         if (_isLoadingLocation)
           Container(
             color: Colors.white,
@@ -246,6 +366,8 @@ class _MapsState extends State<Maps>
               ),
             ),
           ),
+
+        // ---------- Grid Info Card ----------
         Visibility(
           visible: widget.isGridSelectionMode && _currentCellId != null,
           child: Positioned(
@@ -264,7 +386,72 @@ class _MapsState extends State<Maps>
                   ),
           ),
         ),
-        // Enhanced FAB with animation
+
+        // ---------- Map Style Switcher Button ----------
+        Positioned(
+          top: 50,
+          right: 16,
+          child: Container(
+            decoration: BoxDecoration(
+              color: KMTheme.of(context).secondaryBackground,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: PopupMenuButton<MapStyle>(
+              icon:
+                  Icon(Icons.layers, color: KMTheme.of(context).secondaryText),
+              tooltip: 'Change map style',
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              onSelected: (MapStyle style) async {
+                setState(() {
+                  _currentMapStyle = style;
+                });
+                // Save preference
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('map_style', style.name);
+                HapticFeedback.lightImpact();
+              },
+              itemBuilder: (BuildContext context) {
+                return _mapStyles.map((MapStyle style) {
+                  return PopupMenuItem<MapStyle>(
+                    value: style,
+                    child: Row(
+                      children: [
+                        Icon(
+                          _currentMapStyle.name == style.name
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_off,
+                          size: 18,
+                          color: KMTheme.of(context).primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            style.name,
+                            style: TextStyle(
+                              fontWeight: _currentMapStyle.name == style.name
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList();
+              },
+            ),
+          ),
+        ),
+
+        // ---------- Grid Selection FAB ----------
         Positioned(
           bottom: widget.isGridSelectionMode ? 85 : 150,
           right: 16,
@@ -287,7 +474,7 @@ class _MapsState extends State<Maps>
                   child: FloatingActionButton.small(
                     heroTag: 'grid_selection_fab',
                     onPressed: _toggleGridSelectionMode,
-                    backgroundColor: Colors.white,
+                    backgroundColor: KMTheme.of(context).secondaryBackground,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -296,8 +483,8 @@ class _MapsState extends State<Maps>
                     child: Icon(
                       Icons.grid_on_rounded,
                       color: widget.isGridSelectionMode
-                          ? Colors.blue
-                          : const Color(0xFF757575),
+                          ? KMTheme.of(context).primary
+                          : KMTheme.of(context).secondaryText,
                       size: 24,
                     ),
                   ),
@@ -307,6 +494,7 @@ class _MapsState extends State<Maps>
           ),
         ),
 
+        // ---------- My Location FAB ----------
         Positioned(
           bottom: widget.isGridSelectionMode ? 35 : 100,
           right: 16,
@@ -329,7 +517,7 @@ class _MapsState extends State<Maps>
                   child: FloatingActionButton.small(
                     heroTag: 'my_location_fab',
                     onPressed: _moveToCurrentLocation,
-                    backgroundColor: Colors.white,
+                    backgroundColor: KMTheme.of(context).secondaryBackground,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -338,8 +526,8 @@ class _MapsState extends State<Maps>
                     child: Icon(
                       Icons.my_location,
                       color: _isUsingCurrentLocation
-                          ? Colors.blue
-                          : const Color(0xFF757575),
+                          ? KMTheme.of(context).primary
+                          : KMTheme.of(context).secondaryText,
                       size: 24,
                     ),
                   ),
@@ -352,46 +540,19 @@ class _MapsState extends State<Maps>
     );
   }
 
+  // =============================================
+  // Helper Methods
+  // =============================================
   void checkIfSubscribedToCurrentGrid() {
     setState(() {
       _isSubscribedToCurrentGrid = _subscribedGridIds.contains(_currentCellId);
     });
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkLocationService();
-    }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _locationFabAnimationController.dispose();
-    _gridFabAnimationController.dispose();
-    _markerAnimationController.dispose();
-    _pulseAnimationController.dispose();
-    _listViewAnimationController.dispose();
-    _locationCheckTimer?.cancel();
-    _positionSubscription?.cancel();
-    _pinsSubscription?.cancel();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initAnimations();
-    _initializeMap();
-  }
-
   Future<void> loadMarkers({String? customCellId}) async {
     final mapProvider = Provider.of<MapProvider>(context, listen: false);
     List<Marker> allMarkers = [];
 
-    // Set loading state
     setState(() {
       _isLoadingGridData = true;
       _pinsInCurrentGrid = 0;
@@ -401,9 +562,7 @@ class _MapsState extends State<Maps>
     final LatLng? loc =
         mapProvider.location ?? _currentLocation ?? _lastKnownLocation;
     if (loc == null) {
-      setState(() {
-        _isLoadingGridData = false;
-      });
+      setState(() => _isLoadingGridData = false);
       return;
     }
 
@@ -419,10 +578,8 @@ class _MapsState extends State<Maps>
 
       log("Loaded ${markersSnapshot.length} pins for grid: ${customCellId ?? _currentCellId}");
 
-      // Clear existing markers first
       mapProvider.setMarkers([]);
 
-      // Build new markers
       for (Pin pin in markersSnapshot) {
         final data = pin.toJson();
         final latitude = data['latitude'];
@@ -435,7 +592,6 @@ class _MapsState extends State<Maps>
         ));
       }
 
-      // Update state with results
       setState(() {
         _pinsInCurrentGrid = markersSnapshot.length;
         _pinsInCurrentGridList = markersSnapshot;
@@ -474,7 +630,6 @@ class _MapsState extends State<Maps>
       final cellId =
           getCellId(_currentLocation!.latitude, _currentLocation!.longitude);
       setState(() {
-        // _currentGridLocation = _currentLocation;
         _currentCellId = cellId;
       });
     }
@@ -565,10 +720,7 @@ class _MapsState extends State<Maps>
   }
 
   Future<void> _checkAndRequestPermissions() async {
-    // Check location service
     _locationServiceEnabled = await Geolocator.isLocationServiceEnabled();
-
-    // Check location permission
     _locationPermission = await Geolocator.checkPermission();
     _hasLocationPermission = _locationPermission == LocationPermission.always ||
         _locationPermission == LocationPermission.whileInUse;
@@ -585,7 +737,6 @@ class _MapsState extends State<Maps>
       setState(() {
         _locationServiceEnabled = isEnabled;
       });
-
       if (isEnabled && _hasLocationPermission) {
         await _setupLocationTracking();
       }
@@ -609,12 +760,10 @@ class _MapsState extends State<Maps>
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-
     _markerAnimationController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-
     _pulseAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -627,7 +776,6 @@ class _MapsState extends State<Maps>
       parent: _locationFabAnimationController,
       curve: Curves.elasticOut,
     ));
-
     _gridFabScaleAnimation = Tween<double>(
       begin: 1.0,
       end: 1.1,
@@ -635,7 +783,6 @@ class _MapsState extends State<Maps>
       parent: _gridFabAnimationController,
       curve: Curves.elasticOut,
     ));
-
     _markerScaleAnimation = Tween<double>(
       begin: 1.0,
       end: 1.3,
@@ -643,7 +790,6 @@ class _MapsState extends State<Maps>
       parent: _markerAnimationController,
       curve: Curves.elasticOut,
     ));
-
     _markerSlideAnimation = Tween<Offset>(
       begin: Offset.zero,
       end: const Offset(0, -0.2),
@@ -651,7 +797,6 @@ class _MapsState extends State<Maps>
       parent: _markerAnimationController,
       curve: Curves.easeInOut,
     ));
-
     _pulseAnimation = Tween<double>(
       begin: 0.8,
       end: 1.2,
@@ -664,6 +809,20 @@ class _MapsState extends State<Maps>
   Future<void> _initializeMap() async {
     await _checkAndRequestPermissions();
     await _loadLastKnownLocation();
+
+    // Load saved map style
+    final prefs = await SharedPreferences.getInstance();
+    final savedStyleName = prefs.getString('map_style');
+    if (savedStyleName != null) {
+      final style = _mapStyles.firstWhere(
+        (s) => s.name == savedStyleName,
+        orElse: () => _mapStyles[0],
+      );
+      setState(() {
+        _currentMapStyle = style;
+      });
+    }
+
     await _setupLocationTracking();
     await loadMarkers();
     await _moveToCurrentLocation();
@@ -710,7 +869,6 @@ class _MapsState extends State<Maps>
     if (_currentLocation != null) {
       await LocationController().saveLastLocation(_currentLocation!);
       _animateToLocation(_currentLocation!);
-
       setState(() => _isUsingCurrentLocation = true);
       return;
     }
@@ -743,26 +901,20 @@ class _MapsState extends State<Maps>
   }
 
   void _moveToMarker(LatLng markerLocation) {
-    // Get screen size from MediaQuery
     final screenSize = MediaQuery.of(context).size;
-
-    // Calculate how much to offset (about 30% of screen height)
     const offsetFraction = 0.3;
     final offsetPixels = screenSize.height * offsetFraction;
 
-    // Convert pixel offset to geographic coordinates
     final camera = _mapController.camera;
     final visibleBounds = camera.visibleBounds;
     final latDiff = visibleBounds.north - visibleBounds.south;
     final offsetDegrees = (offsetPixels / screenSize.height) * latDiff;
 
-    // Calculate the new center point
     final newCenter = LatLng(
       markerLocation.latitude - offsetDegrees,
       markerLocation.longitude,
     );
 
-    // Move the map
     _mapController.move(newCenter, camera.zoom);
   }
 
@@ -772,9 +924,7 @@ class _MapsState extends State<Maps>
     });
 
     HapticFeedback.selectionClick();
-
     _markerAnimationController.forward();
-
     _moveToMarker(markerLocation);
 
     showModalBottomSheet(
@@ -788,10 +938,7 @@ class _MapsState extends State<Maps>
               const LatLng(0, 0),
           onServe: () async {
             try {
-              // Delete pin
               await PinController().deletePin(pin.pinId);
-
-              // Update local state
               final mapProvider =
                   Provider.of<MapProvider>(context, listen: false);
               final updatedMarkers = mapProvider.markers
@@ -799,7 +946,6 @@ class _MapsState extends State<Maps>
                   .toList();
               mapProvider.setMarkers(updatedMarkers);
 
-              // Show success message
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -815,8 +961,6 @@ class _MapsState extends State<Maps>
                   ),
                 );
               }
-
-              // Close the bottom sheet AFTER removing marker
               if (context.mounted) Navigator.pop(context);
             } catch (e) {
               debugPrint('Error removing pin: $e');
@@ -841,18 +985,12 @@ class _MapsState extends State<Maps>
   }
 
   Future<void> _requestLocationPermission() async {
-    // if (_locationPermission == LocationPermission.deniedForever) {
-    //   _showPermissionDeniedDialog();
-    //   return;
-    // }
-
     final permission = await Geolocator.requestPermission();
     setState(() {
       _locationPermission = permission;
       _hasLocationPermission = permission == LocationPermission.always ||
           permission == LocationPermission.whileInUse;
     });
-
     if (!_hasLocationPermission) {
       _showPermissionDeniedDialog();
     }
@@ -866,15 +1004,7 @@ class _MapsState extends State<Maps>
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        //TODO: Add last location and last updated fields to API
         await LocationController().saveLastLocation(_currentLocation!);
-        // await FirebaseFirestore.instance
-        //     .collection('users')
-        //     .doc(user.uid)
-        //     .update({
-        //   'last_location': GeoPoint(location.latitude, location.longitude),
-        //   'last_updated': FieldValue.serverTimestamp(),
-        // });
       } catch (e) {
         log('Error saving location to Firestore: $e');
       }
@@ -915,20 +1045,7 @@ class _MapsState extends State<Maps>
           getCellInfo(_currentLocation!.latitude, _currentLocation!.longitude);
       final cellId = cellInfo['cellId'];
       _pinsSubscription?.cancel();
-      // _pinsSubscription =
-      //     GridController().streamGridPins(cellId).listen((pins) {
-      //   final markers = pins.map((pin) {
-      //     final data = pin.toJson();
-      //     final markerLocation = LatLng(data['latitude'], data['longitude']);
-      //     return Marker(
-      //       point: markerLocation,
-      //       child: _buildPinMarker(location: markerLocation, pin: pin),
-      //     );
-      //   }).toList();
-      //   mapProvider.setMarkers(markers);
-      // });
 
-      // Set up continuous location tracking
       _positionSubscription?.cancel();
       _positionSubscription = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
@@ -945,7 +1062,6 @@ class _MapsState extends State<Maps>
           _saveLocation(newLocation);
 
           if (_isUsingCurrentLocation) {
-            // Smooth follow current location
             _mapController.move(newLocation, _mapController.camera.zoom);
           }
         },
@@ -978,7 +1094,6 @@ class _MapsState extends State<Maps>
 
   void _showLastKnownLocationFallback() {
     if (_locationServiceEnabled && _hasLocationPermission) {
-      // If location is available, try to get current location instead
       _moveToCurrentLocation();
       return;
     }
@@ -988,7 +1103,6 @@ class _MapsState extends State<Maps>
       mapProvider.setLocation(_lastKnownLocation!);
       _animateToLocation(_lastKnownLocation!);
 
-      // Show a snackbar to inform user they're seeing last known location
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(
