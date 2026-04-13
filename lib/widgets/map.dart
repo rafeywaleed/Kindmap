@@ -34,6 +34,7 @@ class MapStyle {
   final bool hasRetinaSupport;
   final double maxZoom;
   final int maxNativeZoom;
+  final IconData icon;
 
   const MapStyle({
     required this.name,
@@ -43,6 +44,7 @@ class MapStyle {
     this.hasRetinaSupport = false,
     this.maxZoom = 20,
     this.maxNativeZoom = 18,
+    this.icon = Icons.map_outlined,
   });
 
   TileLayer toTileLayer() {
@@ -53,10 +55,7 @@ class MapStyle {
       maxZoom: maxZoom,
       maxNativeZoom: maxNativeZoom,
       retinaMode: true,
-      // hasRetinaSupport ? RetinaMode.isHighDensity : RetinaMode.disabled,
-      additionalOptions: {
-        'attribution': attribution,
-      },
+      additionalOptions: {'attribution': attribution},
     );
   }
 }
@@ -65,6 +64,7 @@ class Maps extends StatefulWidget {
   final bool isGridSelectionMode;
   final VoidCallback? toggleGridSelectionMode;
   final Function(bool)? setGridSelectionMode;
+
   const Maps({
     super.key,
     this.isGridSelectionMode = false,
@@ -99,7 +99,6 @@ class _MapsState extends State<Maps>
   String? _currentCellId;
   int _pinsInCurrentGrid = 0;
   List<Pin> _pinsInCurrentGridList = [];
-
   List<String> _subscribedGridIds = [];
 
   final MapController _mapController = MapController();
@@ -109,49 +108,56 @@ class _MapsState extends State<Maps>
   // =============================================
   final List<MapStyle> _mapStyles = const [
     MapStyle(
-      name: 'OpenStreetMap',
+      name: 'Standard',
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       attribution: '© OpenStreetMap',
+      icon: Icons.map_outlined,
     ),
     MapStyle(
-      name: 'CartoDB Voyager',
+      name: 'Voyager',
       urlTemplate:
           'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       subdomains: ['a', 'b', 'c', 'd'],
       attribution: '© OpenStreetMap, © CartoDB',
       hasRetinaSupport: true,
+      icon: Icons.explore_outlined,
     ),
     MapStyle(
-      name: 'CartoDB Positron',
+      name: 'Positron',
       urlTemplate:
           'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
       subdomains: ['a', 'b', 'c', 'd'],
       attribution: '© OpenStreetMap, © CartoDB',
+      icon: Icons.light_mode_outlined,
     ),
     MapStyle(
-      name: 'CartoDB Dark Matter',
+      name: 'Dark Matter',
       urlTemplate:
           'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
       subdomains: ['a', 'b', 'c', 'd'],
       attribution: '© OpenStreetMap, © CartoDB',
+      icon: Icons.dark_mode_outlined,
     ),
     MapStyle(
-      name: 'OpenTopoMap',
+      name: 'Terrain',
       urlTemplate: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
       subdomains: ['a', 'b', 'c'],
       attribution: '© OpenStreetMap contributors, SRTM',
+      icon: Icons.terrain_outlined,
     ),
     MapStyle(
-      name: 'Esri Satellite',
+      name: 'Satellite',
       urlTemplate:
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
       attribution: '© Esri',
+      icon: Icons.satellite_alt_outlined,
     ),
     MapStyle(
       name: 'Humanitarian',
       urlTemplate: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
       subdomains: ['a', 'b'],
       attribution: '© OpenStreetMap contributors',
+      icon: Icons.volunteer_activism_outlined,
     ),
   ];
 
@@ -165,30 +171,32 @@ class _MapsState extends State<Maps>
   late AnimationController _markerAnimationController;
   late AnimationController _pulseAnimationController;
   late AnimationController _listViewAnimationController;
+  late AnimationController _loadingController;
 
   late Animation<double> _locationFabScaleAnimation;
   late Animation<double> _gridFabScaleAnimation;
   late Animation<double> _markerScaleAnimation;
   late Animation<double> _pulseAnimation;
   late Animation<Offset> _markerSlideAnimation;
+  late Animation<double> _loadingFadeAnimation;
 
   Timer? _locationCheckTimer;
   StreamSubscription<Position>? _positionSubscription;
   StreamSubscription<List<Pin>>? _pinsSubscription;
-
   ScaffoldFeatureController<SnackBar, SnackBarClosedReason>?
       _locationLoadingSnackBar;
 
   bool _isListViewExpanded = false;
   bool _isLoadingGridData = false;
+  bool _styleMenuOpen = false;
 
   // =============================================
-  // Lifecycle Methods
+  // Lifecycle
   // =============================================
   @override
   void initState() {
     super.initState();
-    _currentMapStyle = _mapStyles[0]; // default
+    _currentMapStyle = _mapStyles[0];
     WidgetsBinding.instance.addObserver(this);
     _initAnimations();
     _initializeMap();
@@ -202,6 +210,7 @@ class _MapsState extends State<Maps>
     _markerAnimationController.dispose();
     _pulseAnimationController.dispose();
     _listViewAnimationController.dispose();
+    _loadingController.dispose();
     _locationCheckTimer?.cancel();
     _positionSubscription?.cancel();
     _pinsSubscription?.cancel();
@@ -210,21 +219,21 @@ class _MapsState extends State<Maps>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkLocationService();
-    }
+    if (state == AppLifecycleState.resumed) _checkLocationService();
   }
 
   // =============================================
-  // Build Method
+  // Build
   // =============================================
   @override
   Widget build(BuildContext context) {
     final mapProvider = Provider.of<MapProvider>(context);
+    final theme = KMTheme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Stack(
       children: [
-        // ---------- FlutterMap ----------
+        // ── Map ────────────────────────────────────────────────────
         if (mapProvider.location != null)
           FlutterMap(
             mapController: _mapController,
@@ -265,109 +274,77 @@ class _MapsState extends State<Maps>
                     final distance = const Distance()
                         .as(LengthUnit.Meter, center, currentLoc);
                     if (distance > 50) {
-                      setState(() {
-                        _isUsingCurrentLocation = false;
-                      });
+                      setState(() => _isUsingCurrentLocation = false);
                     }
                   }
                 }
               },
             ),
             children: [
-              // ----- Dynamic Tile Layer -----
               _currentMapStyle.toTileLayer(),
 
-              // ----- Grid Polygon Layer -----
+              // Grid polygon
               if ((widget.isGridSelectionMode &&
                       _currentGridLocation != null) ||
                   (!widget.isGridSelectionMode &&
                       _currentGridLocation != null &&
                       _currentLocation != null))
-                Builder(
-                  builder: (context) {
-                    LatLng loc = widget.isGridSelectionMode
-                        ? _currentGridLocation!
-                        : _currentLocation!;
-                    final cell = getCellInfo(loc.latitude, loc.longitude);
-                    final double swLat =
-                        (cell['row'] as int) * (cell['deltaLatDeg'] as double);
-                    final double swLng =
-                        (cell['col'] as int) * (cell['deltaLongDeg'] as double);
-                    final double deltaLat = cell['deltaLatDeg'] as double;
-                    final double deltaLng = cell['deltaLongDeg'] as double;
-                    final List<LatLng> corners = [
-                      LatLng(swLat, swLng), // SW
-                      LatLng(swLat, swLng + deltaLng), // SE
-                      LatLng(swLat + deltaLat, swLng + deltaLng), // NE
-                      LatLng(swLat + deltaLat, swLng), // NW
-                    ];
-                    return PolygonLayer(
-                      polygons: [
-                        Polygon(
-                          points: corners,
-                          color: Colors.blue.withOpacity(0.18),
-                          borderColor: Colors.blue.withOpacity(0.08),
-                          borderStrokeWidth: 2,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-
-              // ----- Markers Layer -----
-              MarkerLayer(
-                markers: [
-                  if (_locationServiceEnabled &&
-                      _hasLocationPermission &&
-                      _currentLocation != null)
-                    Marker(
-                      point: _currentLocation!,
-                      width: 80,
-                      height: 80,
-                      child: _buildLocationMarker(
-                        location: _currentLocation!,
-                        color: Colors.blue,
-                      ),
-                    )
-                  else if (_lastKnownLocation != null)
-                    Marker(
-                      point: _lastKnownLocation!,
-                      width: 80,
-                      height: 80,
-                      child: _buildLocationMarker(
-                        location: _lastKnownLocation!,
-                        color: Colors.grey,
-                      ),
+                Builder(builder: (context) {
+                  final loc = widget.isGridSelectionMode
+                      ? _currentGridLocation!
+                      : _currentLocation!;
+                  final cell = getCellInfo(loc.latitude, loc.longitude);
+                  final swLat =
+                      (cell['row'] as int) * (cell['deltaLatDeg'] as double);
+                  final swLng =
+                      (cell['col'] as int) * (cell['deltaLongDeg'] as double);
+                  final deltaLat = cell['deltaLatDeg'] as double;
+                  final deltaLng = cell['deltaLongDeg'] as double;
+                  final corners = [
+                    LatLng(swLat, swLng),
+                    LatLng(swLat, swLng + deltaLng),
+                    LatLng(swLat + deltaLat, swLng + deltaLng),
+                    LatLng(swLat + deltaLat, swLng),
+                  ];
+                  return PolygonLayer(polygons: [
+                    Polygon(
+                      points: corners,
+                      color: Colors.blue.withOpacity(0.12),
+                      borderColor: Colors.blue.withOpacity(0.5),
+                      borderStrokeWidth: 1.5,
                     ),
-                  ...mapProvider.markers,
-                ],
-              ),
+                  ]);
+                }),
+
+              // Markers
+              MarkerLayer(markers: [
+                if (_locationServiceEnabled &&
+                    _hasLocationPermission &&
+                    _currentLocation != null)
+                  Marker(
+                    point: _currentLocation!,
+                    width: 80,
+                    height: 80,
+                    child: _buildLocationMarker(
+                        location: _currentLocation!, color: Colors.blue),
+                  )
+                else if (_lastKnownLocation != null)
+                  Marker(
+                    point: _lastKnownLocation!,
+                    width: 80,
+                    height: 80,
+                    child: _buildLocationMarker(
+                        location: _lastKnownLocation!, color: Colors.grey),
+                  ),
+                ...mapProvider.markers,
+              ]),
             ],
           ),
 
-        // ---------- Loading Overlay ----------
-        if (_isLoadingLocation)
-          Container(
-            color: Colors.white,
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator.adaptive(),
-                  SizedBox(height: 16),
-                  Text(
-                    'Loading map...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        // ── Loading Screen ──────────────────────────────────────────
+        if (_isLoadingLocation) _buildLoadingScreen(theme, isDark),
 
-        // ---------- Grid Info Card ----------
+        // ── Grid Info Card ──────────────────────────────────────────
         Visibility(
           visible: widget.isGridSelectionMode && _currentCellId != null,
           child: Positioned(
@@ -387,153 +364,61 @@ class _MapsState extends State<Maps>
           ),
         ),
 
-        // ---------- Map Style Switcher Button ----------
+        // ── Map Style Switcher ──────────────────────────────────────
         Positioned(
           top: 50,
           right: 16,
-          child: Container(
-            decoration: BoxDecoration(
-              color: KMTheme.of(context).secondaryBackground,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: PopupMenuButton<MapStyle>(
-              icon:
-                  Icon(Icons.layers, color: KMTheme.of(context).secondaryText),
-              tooltip: 'Change map style',
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              onSelected: (MapStyle style) async {
-                setState(() {
-                  _currentMapStyle = style;
-                });
-                // Save preference
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('map_style', style.name);
-                HapticFeedback.lightImpact();
-              },
-              itemBuilder: (BuildContext context) {
-                return _mapStyles.map((MapStyle style) {
-                  return PopupMenuItem<MapStyle>(
-                    value: style,
-                    child: Row(
-                      children: [
-                        Icon(
-                          _currentMapStyle.name == style.name
-                              ? Icons.radio_button_checked
-                              : Icons.radio_button_off,
-                          size: 18,
-                          color: KMTheme.of(context).primary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            style.name,
-                            style: TextStyle(
-                              fontWeight: _currentMapStyle.name == style.name
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList();
-              },
-            ),
+          child: _MapStyleSwitcher(
+            styles: _mapStyles,
+            currentStyle: _currentMapStyle,
+            theme: theme,
+            isDark: isDark,
+            onStyleSelected: (style) async {
+              setState(() => _currentMapStyle = style);
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('map_style', style.name);
+              HapticFeedback.lightImpact();
+            },
           ),
         ),
 
-        // ---------- Grid Selection FAB ----------
+        // ── Grid FAB ────────────────────────────────────────────────
         Positioned(
           bottom: widget.isGridSelectionMode ? 85 : 150,
           right: 16,
           child: AnimatedBuilder(
             animation: _gridFabScaleAnimation,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _gridFabScaleAnimation.value,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: FloatingActionButton.small(
-                    heroTag: 'grid_selection_fab',
-                    onPressed: _toggleGridSelectionMode,
-                    backgroundColor: KMTheme.of(context).secondaryBackground,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    tooltip: widget.isGridSelectionMode.toString(),
-                    child: Icon(
-                      Icons.grid_on_rounded,
-                      color: widget.isGridSelectionMode
-                          ? KMTheme.of(context).primary
-                          : KMTheme.of(context).secondaryText,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              );
-            },
+            builder: (_, __) => Transform.scale(
+              scale: _gridFabScaleAnimation.value,
+              child: _MapFab(
+                heroTag: 'grid_selection_fab',
+                onPressed: _toggleGridSelectionMode,
+                icon: Icons.grid_on_rounded,
+                isActive: widget.isGridSelectionMode,
+                theme: theme,
+                tooltip: 'Toggle grid selection',
+              ),
+            ),
           ),
         ),
 
-        // ---------- My Location FAB ----------
+        // ── Location FAB ─────────────────────────────────────────────
         Positioned(
           bottom: widget.isGridSelectionMode ? 35 : 100,
           right: 16,
           child: AnimatedBuilder(
             animation: _locationFabScaleAnimation,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _locationFabScaleAnimation.value,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: FloatingActionButton.small(
-                    heroTag: 'my_location_fab',
-                    onPressed: _moveToCurrentLocation,
-                    backgroundColor: KMTheme.of(context).secondaryBackground,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    tooltip: _isUsingCurrentLocation.toString(),
-                    child: Icon(
-                      Icons.my_location,
-                      color: _isUsingCurrentLocation
-                          ? KMTheme.of(context).primary
-                          : KMTheme.of(context).secondaryText,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              );
-            },
+            builder: (_, __) => Transform.scale(
+              scale: _locationFabScaleAnimation.value,
+              child: _MapFab(
+                heroTag: 'my_location_fab',
+                onPressed: _moveToCurrentLocation,
+                icon: Icons.my_location_rounded,
+                isActive: _isUsingCurrentLocation,
+                theme: theme,
+                tooltip: 'My location',
+              ),
+            ),
           ),
         ),
       ],
@@ -541,7 +426,61 @@ class _MapsState extends State<Maps>
   }
 
   // =============================================
-  // Helper Methods
+  // Loading Screen
+  // =============================================
+  Widget _buildLoadingScreen(KMTheme theme, bool isDark) {
+    return AnimatedBuilder(
+      animation: _loadingFadeAnimation,
+      builder: (_, __) => Opacity(
+        opacity: _loadingFadeAnimation.value,
+        child: Container(
+          color: theme.primaryBackground,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Animated logo area
+                _LoadingPulse(theme: theme),
+                const SizedBox(height: 32),
+                Text(
+                  'KindMap',
+                  style: theme.displaySmall.copyWith(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 28,
+                    letterSpacing: -0.5,
+                    color: theme.primaryText,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Finding your location…',
+                  style: theme.bodySmall.copyWith(
+                    color: theme.secondaryText,
+                    fontSize: 13,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: 120,
+                  child: LinearProgressIndicator(
+                    backgroundColor: theme.primaryText.withOpacity(0.08),
+                    color: theme.primary,
+                    borderRadius: BorderRadius.circular(4),
+                    minHeight: 3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // =============================================
+  // Helper Methods (unchanged logic)
   // =============================================
   void checkIfSubscribedToCurrentGrid() {
     setState(() {
@@ -577,7 +516,6 @@ class _MapsState extends State<Maps>
       }
 
       log("Loaded ${markersSnapshot.length} pins for grid: ${customCellId ?? _currentCellId}");
-
       mapProvider.setMarkers([]);
 
       for (Pin pin in markersSnapshot) {
@@ -585,7 +523,6 @@ class _MapsState extends State<Maps>
         final latitude = data['latitude'];
         final longitude = data['longitude'];
         final markerLocation = LatLng(latitude, longitude);
-
         allMarkers.add(Marker(
           point: markerLocation,
           child: _buildPinMarker(location: markerLocation, pin: pin),
@@ -597,7 +534,6 @@ class _MapsState extends State<Maps>
         _pinsInCurrentGridList = markersSnapshot;
         _isLoadingGridData = false;
       });
-
       mapProvider.setMarkers(allMarkers);
     } catch (e) {
       log('Error loading markers: $e');
@@ -629,9 +565,7 @@ class _MapsState extends State<Maps>
     if (_currentLocation != null) {
       final cellId =
           getCellId(_currentLocation!.latitude, _currentLocation!.longitude);
-      setState(() {
-        _currentCellId = cellId;
-      });
+      setState(() => _currentCellId = cellId);
     }
     checkIfSubscribedToCurrentGrid();
   }
@@ -641,12 +575,16 @@ class _MapsState extends State<Maps>
     return Stack(
       alignment: Alignment.center,
       children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withOpacity(0.2),
+        AnimatedBuilder(
+          animation: _pulseAnimationController,
+          builder: (_, __) => Container(
+            width: 56 * _pulseAnimation.value * 0.5 + 28,
+            height: 56 * _pulseAnimation.value * 0.5 + 28,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withOpacity(
+                  0.15 * (1 - (_pulseAnimation.value - 0.8) / 0.4)),
+            ),
           ),
         ),
         Container(
@@ -658,17 +596,14 @@ class _MapsState extends State<Maps>
             border: Border.all(color: Colors.white, width: 3),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
+                color: color.withOpacity(0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
-          child: const Icon(
-            Icons.my_location,
-            color: Colors.white,
-            size: 24,
-          ),
+          child: const Icon(Icons.my_location_rounded,
+              color: Colors.white, size: 20),
         ),
       ],
     );
@@ -688,7 +623,7 @@ class _MapsState extends State<Maps>
           final isSelected = _selectedMarkerLocation == location;
           final scale = isSelected
               ? _markerScaleAnimation.value
-              : _pulseAnimation.value * 0.1 + 0.95;
+              : _pulseAnimation.value * 0.08 + 0.96;
           final offset = isSelected ? _markerSlideAnimation.value : Offset.zero;
 
           return Transform.translate(
@@ -724,7 +659,6 @@ class _MapsState extends State<Maps>
     _locationPermission = await Geolocator.checkPermission();
     _hasLocationPermission = _locationPermission == LocationPermission.always ||
         _locationPermission == LocationPermission.whileInUse;
-
     if (!_hasLocationPermission &&
         _locationPermission != LocationPermission.deniedForever) {
       await _requestLocationPermission();
@@ -734,83 +668,52 @@ class _MapsState extends State<Maps>
   Future<void> _checkLocationService() async {
     final isEnabled = await Geolocator.isLocationServiceEnabled();
     if (_locationServiceEnabled != isEnabled) {
-      setState(() {
-        _locationServiceEnabled = isEnabled;
-      });
-      if (isEnabled && _hasLocationPermission) {
-        await _setupLocationTracking();
-      }
+      setState(() => _locationServiceEnabled = isEnabled);
+      if (isEnabled && _hasLocationPermission) await _setupLocationTracking();
     }
   }
 
-  void _hideLocationLoadingSnackBar() {
-    _locationLoadingSnackBar?.close();
-  }
+  void _hideLocationLoadingSnackBar() => _locationLoadingSnackBar?.close();
 
   void _initAnimations() {
     _locationFabAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
+        duration: const Duration(milliseconds: 300), vsync: this);
     _gridFabAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
+        duration: const Duration(milliseconds: 300), vsync: this);
     _listViewAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
+        duration: const Duration(milliseconds: 400), vsync: this);
     _markerAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
+        duration: const Duration(milliseconds: 400), vsync: this);
     _pulseAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
+        duration: const Duration(milliseconds: 1800), vsync: this)
+      ..repeat(reverse: true);
+    _loadingController = AnimationController(
+        duration: const Duration(milliseconds: 400), vsync: this, value: 1.0);
 
-    _locationFabScaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _locationFabAnimationController,
-      curve: Curves.elasticOut,
-    ));
-    _gridFabScaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _gridFabAnimationController,
-      curve: Curves.elasticOut,
-    ));
-    _markerScaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.3,
-    ).animate(CurvedAnimation(
-      parent: _markerAnimationController,
-      curve: Curves.elasticOut,
-    ));
-    _markerSlideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, -0.2),
-    ).animate(CurvedAnimation(
-      parent: _markerAnimationController,
-      curve: Curves.easeInOut,
-    ));
-    _pulseAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.2,
-    ).animate(CurvedAnimation(
-      parent: _pulseAnimationController,
-      curve: Curves.easeInOut,
-    ));
+    _locationFabScaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+        CurvedAnimation(
+            parent: _locationFabAnimationController, curve: Curves.elasticOut));
+    _gridFabScaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+        CurvedAnimation(
+            parent: _gridFabAnimationController, curve: Curves.elasticOut));
+    _markerScaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+        CurvedAnimation(
+            parent: _markerAnimationController, curve: Curves.elasticOut));
+    _markerSlideAnimation =
+        Tween<Offset>(begin: Offset.zero, end: const Offset(0, -0.2)).animate(
+            CurvedAnimation(
+                parent: _markerAnimationController, curve: Curves.easeInOut));
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+        CurvedAnimation(
+            parent: _pulseAnimationController, curve: Curves.easeInOut));
+    _loadingFadeAnimation =
+        CurvedAnimation(parent: _loadingController, curve: Curves.easeOut);
   }
 
   Future<void> _initializeMap() async {
     await _checkAndRequestPermissions();
     await _loadLastKnownLocation();
 
-    // Load saved map style
     final prefs = await SharedPreferences.getInstance();
     final savedStyleName = prefs.getString('map_style');
     if (savedStyleName != null) {
@@ -818,17 +721,13 @@ class _MapsState extends State<Maps>
         (s) => s.name == savedStyleName,
         orElse: () => _mapStyles[0],
       );
-      setState(() {
-        _currentMapStyle = style;
-      });
+      setState(() => _currentMapStyle = style);
     }
 
     await _setupLocationTracking();
     await loadMarkers();
     await _moveToCurrentLocation();
-    setState(() {
-      _isLoadingLocation = false;
-    });
+    setState(() => _isLoadingLocation = false);
   }
 
   Future<void> _loadLastKnownLocation() async {
@@ -840,11 +739,8 @@ class _MapsState extends State<Maps>
       _lastKnownLocation = LatLng(lastLat, lastLng);
       final mapProvider = Provider.of<MapProvider>(context, listen: false);
       mapProvider.setLocation(_lastKnownLocation!);
-
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _animateToLocation(_lastKnownLocation!);
-        }
+        if (mounted) _animateToLocation(_lastKnownLocation!);
       });
     }
   }
@@ -852,20 +748,18 @@ class _MapsState extends State<Maps>
   Future<void> _moveToCurrentLocation() async {
     final mapProvider = Provider.of<MapProvider>(context, listen: false);
     HapticFeedback.lightImpact();
-    _locationFabAnimationController.forward().then((_) {
-      _locationFabAnimationController.reverse();
-    });
+    _locationFabAnimationController
+        .forward()
+        .then((_) => _locationFabAnimationController.reverse());
 
     if (!_locationServiceEnabled) {
       _showLocationServiceDialog();
       return;
     }
-
     if (!_hasLocationPermission) {
       await _requestLocationPermission();
       if (!_hasLocationPermission) return;
     }
-
     if (_currentLocation != null) {
       await LocationController().saveLastLocation(_currentLocation!);
       _animateToLocation(_currentLocation!);
@@ -875,13 +769,11 @@ class _MapsState extends State<Maps>
 
     try {
       _showLocationLoadingSnackBar();
-
       final position = await Geolocator.getLastKnownPosition() ??
           await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
             timeLimit: const Duration(seconds: 10),
           );
-
       _currentLocation = LatLng(position.latitude, position.longitude);
       _currentGridLocation = LatLng(position.latitude, position.longitude);
       _currentCellId = getCellId(position.latitude, position.longitude);
@@ -890,7 +782,6 @@ class _MapsState extends State<Maps>
       await LocationController().saveLastLocation(_currentLocation!);
       _animateToLocation(_currentLocation!);
       setState(() => _isUsingCurrentLocation = true);
-
       await _saveLocation(_currentLocation!);
       _hideLocationLoadingSnackBar();
     } catch (e) {
@@ -904,25 +795,17 @@ class _MapsState extends State<Maps>
     final screenSize = MediaQuery.of(context).size;
     const offsetFraction = 0.3;
     final offsetPixels = screenSize.height * offsetFraction;
-
     final camera = _mapController.camera;
     final visibleBounds = camera.visibleBounds;
     final latDiff = visibleBounds.north - visibleBounds.south;
     final offsetDegrees = (offsetPixels / screenSize.height) * latDiff;
-
     final newCenter = LatLng(
-      markerLocation.latitude - offsetDegrees,
-      markerLocation.longitude,
-    );
-
+        markerLocation.latitude - offsetDegrees, markerLocation.longitude);
     _mapController.move(newCenter, camera.zoom);
   }
 
   void _onMarkerTap(LatLng markerLocation, Pin pin) {
-    setState(() {
-      _selectedMarkerLocation = markerLocation;
-    });
-
+    setState(() => _selectedMarkerLocation = markerLocation);
     HapticFeedback.selectionClick();
     _markerAnimationController.forward();
     _moveToMarker(markerLocation);
@@ -945,41 +828,32 @@ class _MapsState extends State<Maps>
                   .where((marker) => marker.point != markerLocation)
                   .toList();
               mapProvider.setMarkers(updatedMarkers);
-
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text('Thank you for helping!'),
-                      ],
-                    ),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content: Row(children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('Thank you for helping!'),
+                  ]),
+                  backgroundColor: Colors.green,
+                  behavior: SnackBarBehavior.floating,
+                ));
               }
               if (context.mounted) Navigator.pop(context);
             } catch (e) {
               debugPrint('Error removing pin: $e');
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error removing pin: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text('Error removing pin: $e'),
+                  backgroundColor: Colors.red,
+                ));
               }
             }
           },
         );
       },
     ).then((_) {
-      setState(() {
-        _selectedMarkerLocation = null;
-      });
+      setState(() => _selectedMarkerLocation = null);
       _markerAnimationController.reverse();
     });
   }
@@ -991,16 +865,13 @@ class _MapsState extends State<Maps>
       _hasLocationPermission = permission == LocationPermission.always ||
           permission == LocationPermission.whileInUse;
     });
-    if (!_hasLocationPermission) {
-      _showPermissionDeniedDialog();
-    }
+    if (!_hasLocationPermission) _showPermissionDeniedDialog();
   }
 
   Future<void> _saveLocation(LatLng location) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('last_latitude', location.latitude);
     await prefs.setDouble('last_longitude', location.longitude);
-
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
@@ -1024,27 +895,20 @@ class _MapsState extends State<Maps>
       _currentLocation = LatLng(position.latitude, position.longitude);
       _currentGridLocation = LatLng(position.latitude, position.longitude);
       _currentCellId = getCellId(position.latitude, position.longitude);
+
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
       final subscribedGrids =
           await UserController().fetchSubscribedGrids(user.uid);
-      setState(() {
-        _subscribedGridIds = subscribedGrids;
-      });
+      setState(() => _subscribedGridIds = subscribedGrids);
+
       await LocationController().saveLastLocation(_currentLocation!);
       mapProvider.setLocation(_currentLocation!);
-
       if (_lastKnownLocation == null) {
         _animateToLocation(_currentLocation!);
         setState(() => _isUsingCurrentLocation = true);
       }
-
       await _saveLocation(_currentLocation!);
-
-      final cellInfo =
-          getCellInfo(_currentLocation!.latitude, _currentLocation!.longitude);
-      final cellId = cellInfo['cellId'];
-      _pinsSubscription?.cancel();
 
       _positionSubscription?.cancel();
       _positionSubscription = Geolocator.getPositionStream(
@@ -1056,18 +920,14 @@ class _MapsState extends State<Maps>
         (Position position) {
           final newLocation = LatLng(position.latitude, position.longitude);
           _currentLocation = newLocation;
-
           final mapProvider = Provider.of<MapProvider>(context, listen: false);
           mapProvider.setLocation(newLocation);
           _saveLocation(newLocation);
-
           if (_isUsingCurrentLocation) {
             _mapController.move(newLocation, _mapController.camera.zoom);
           }
         },
-        onError: (error) {
-          log('Location stream error: $error');
-        },
+        onError: (error) => log('Location stream error: $error'),
       );
     } catch (e) {
       log('Error setting up location tracking: $e');
@@ -1076,20 +936,16 @@ class _MapsState extends State<Maps>
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(children: [
+        const Icon(Icons.error_outline, color: Colors.white),
+        const SizedBox(width: 8),
+        Expanded(child: Text(message)),
+      ]),
+      backgroundColor: Colors.red,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
   void _showLastKnownLocationFallback() {
@@ -1097,72 +953,58 @@ class _MapsState extends State<Maps>
       _moveToCurrentLocation();
       return;
     }
-
     if (_lastKnownLocation != null) {
       final mapProvider = Provider.of<MapProvider>(context, listen: false);
       mapProvider.setLocation(_lastKnownLocation!);
       _animateToLocation(_lastKnownLocation!);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                    'Enable location services to see your current position'),
-              ),
-            ],
-          ),
-          action: SnackBarAction(
-            label: 'Enable',
-            textColor: Colors.white,
-            onPressed: _moveToCurrentLocation,
-          ),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Row(children: [
+          Icon(Icons.info_outline, color: Colors.white),
+          SizedBox(width: 8),
+          Expanded(
+              child: Text(
+                  'Enable location services to see your current position')),
+        ]),
+        action: SnackBarAction(
+          label: 'Enable',
+          textColor: Colors.white,
+          onPressed: _moveToCurrentLocation,
         ),
-      );
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
     }
   }
 
   void _showLocationEnabledSnackBar() {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Location services enabled!'),
-          ],
-        ),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Row(children: [
+        Icon(Icons.check_circle, color: Colors.white),
+        SizedBox(width: 8),
+        Text('Location services enabled!'),
+      ]),
+      backgroundColor: Colors.green,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
   }
 
   void _showLocationLoadingSnackBar() {
     _locationLoadingSnackBar = ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
-          children: [
-            SizedBox(
+        content: const Row(children: [
+          SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Colors.white),
-            ),
-            SizedBox(width: 12),
-            Text('Getting your location...'),
-          ],
-        ),
+                  strokeWidth: 2, color: Colors.white)),
+          SizedBox(width: 12),
+          Text('Getting your location…'),
+        ]),
         backgroundColor: Theme.of(context).primaryColor,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 10),
       ),
     );
@@ -1170,89 +1012,75 @@ class _MapsState extends State<Maps>
 
   void _showLocationServiceDialog() {
     if (!mounted) return;
-
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: KMTheme.of(context).primaryBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        title: Row(
-          children: [
+      builder: (context) {
+        final theme = KMTheme.of(context);
+        return AlertDialog(
+          backgroundColor: theme.primaryBackground,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(children: [
             Container(
               decoration: BoxDecoration(
-                color: Colors.red.withAlpha(25),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              padding: const EdgeInsets.all(6),
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.all(8),
               child: const Icon(Icons.location_disabled, color: Colors.red),
             ),
             const SizedBox(width: 12),
             const Expanded(
-              child: Text(
-                'Location Services Disabled',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+                child: Text('Location Services Disabled',
+                    style: TextStyle(fontWeight: FontWeight.w700))),
+          ]),
+          content: const Text(
+              'Please enable location services to show your current position on the map.',
+              style: TextStyle(fontSize: 15)),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel')),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.settings, size: 18),
+              label: const Text('Enable'),
+              style: ElevatedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10))),
+              onPressed: () async {
+                Navigator.pop(context);
+                await Geolocator.openLocationSettings();
+                _startLocationServiceCheck();
+              },
             ),
           ],
-        ),
-        content: const Text(
-          'Please enable location services to show your current position on the map.',
-          style: TextStyle(fontSize: 15),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.settings, size: 18),
-            label: const Text('Enable'),
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-            onPressed: () async {
-              Navigator.pop(context);
-              await Geolocator.openLocationSettings();
-              _startLocationServiceCheck();
-            },
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   void _showPermissionDeniedDialog() {
     if (!mounted) return;
-
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.orange.withAlpha(25),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.location_off,
-                  color: Colors.orange, size: 24),
-            ),
-            const SizedBox(width: 12),
-            const Text('Location Permission Required'),
-          ],
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10)),
+            child:
+                const Icon(Icons.location_off, color: Colors.orange, size: 24),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(child: Text('Location Permission Required')),
+        ]),
         content: const Text(
           'To show your current location and provide the best experience, please grant location permission in your device settings.',
-          style: TextStyle(fontSize: 16),
+          style: TextStyle(fontSize: 15),
         ),
         actions: [
           TextButton(
@@ -1260,17 +1088,14 @@ class _MapsState extends State<Maps>
               Navigator.pop(context);
               _showLastKnownLocationFallback();
             },
-            child: const Text('Continue Without Location'),
+            child: const Text('Continue Without'),
           ),
           ElevatedButton.icon(
             icon: const Icon(Icons.settings, size: 18),
             label: const Text('Open Settings'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
               Navigator.pop(context);
@@ -1291,9 +1116,7 @@ class _MapsState extends State<Maps>
       final isEnabled = await Geolocator.isLocationServiceEnabled();
       if (isEnabled) {
         timer.cancel();
-        setState(() {
-          _locationServiceEnabled = true;
-        });
+        setState(() => _locationServiceEnabled = true);
         await _setupLocationTracking();
         _showLocationEnabledSnackBar();
       }
@@ -1302,9 +1125,9 @@ class _MapsState extends State<Maps>
 
   void _toggleGridSelectionMode() {
     HapticFeedback.lightImpact();
-    _gridFabAnimationController.forward().then((_) {
-      _gridFabAnimationController.reverse();
-    });
+    _gridFabAnimationController
+        .forward()
+        .then((_) => _gridFabAnimationController.reverse());
     widget.toggleGridSelectionMode!();
     if (widget.isGridSelectionMode) {
       _mapController.move(_currentCenter!, _currentZoom);
@@ -1317,5 +1140,483 @@ class _MapsState extends State<Maps>
       });
       _mapController.move(currentCenter, 14);
     }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAP FAB — refined floating action button
+// ═══════════════════════════════════════════════════════════════
+
+class _MapFab extends StatefulWidget {
+  final String heroTag;
+  final VoidCallback onPressed;
+  final IconData icon;
+  final bool isActive;
+  final KMTheme theme;
+  final String tooltip;
+
+  const _MapFab({
+    required this.heroTag,
+    required this.onPressed,
+    required this.icon,
+    required this.isActive,
+    required this.theme,
+    required this.tooltip,
+  });
+
+  @override
+  State<_MapFab> createState() => _MapFabState();
+}
+
+class _MapFabState extends State<_MapFab> with SingleTickerProviderStateMixin {
+  late AnimationController _pressCtrl;
+  late Animation<double> _pressScale;
+  bool _pressing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 120));
+    _pressScale = Tween<double>(begin: 1.0, end: 0.92)
+        .animate(CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _pressCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+
+    return Tooltip(
+      message: widget.tooltip,
+      child: GestureDetector(
+        onTapDown: (_) {
+          setState(() => _pressing = true);
+          _pressCtrl.forward();
+        },
+        onTapUp: (_) {
+          setState(() => _pressing = false);
+          _pressCtrl.reverse();
+          widget.onPressed();
+        },
+        onTapCancel: () {
+          setState(() => _pressing = false);
+          _pressCtrl.reverse();
+        },
+        child: AnimatedBuilder(
+          animation: _pressScale,
+          builder: (_, __) => Transform.scale(
+            scale: _pressScale.value,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: widget.isActive
+                    ? theme.primaryText.withOpacity(0.15)
+                    : theme.secondaryBackground,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: widget.isActive
+                      ? theme.primaryText.withOpacity(0.5)
+                      : theme.primaryText.withOpacity(0.15),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.25),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 4),
+                  ),
+                  // Add a subtle white outer glow when dark mode is active
+                  if (Theme.of(context).brightness == Brightness.dark ||
+                      Theme.of(context).brightness == Brightness.light)
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.15),
+                      blurRadius: 8,
+                      spreadRadius: -1,
+                      offset: const Offset(0, 0),
+                    ),
+                ],
+              ),
+              child: AnimatedRotation(
+                turns: widget.isActive ? 0.0 : 0.0,
+                duration: const Duration(milliseconds: 250),
+                child: Icon(
+                  widget.icon,
+                  size: 20,
+                  color:
+                      widget.isActive ? theme.primaryText : theme.secondaryText,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAP STYLE SWITCHER — elegant overlay panel
+// ═══════════════════════════════════════════════════════════════
+
+class _MapStyleSwitcher extends StatefulWidget {
+  final List<MapStyle> styles;
+  final MapStyle currentStyle;
+  final KMTheme theme;
+  final bool isDark;
+  final Function(MapStyle) onStyleSelected;
+
+  const _MapStyleSwitcher({
+    required this.styles,
+    required this.currentStyle,
+    required this.theme,
+    required this.isDark,
+    required this.onStyleSelected,
+  });
+
+  @override
+  State<_MapStyleSwitcher> createState() => _MapStyleSwitcherState();
+}
+
+class _MapStyleSwitcherState extends State<_MapStyleSwitcher>
+    with SingleTickerProviderStateMixin {
+  bool _open = false;
+  late AnimationController _ctrl;
+  late Animation<double> _fade;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 280));
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _scale = Tween<double>(begin: 0.88, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _open = !_open);
+    if (_open) {
+      _ctrl.forward();
+    } else {
+      _ctrl.reverse();
+    }
+    HapticFeedback.selectionClick();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Toggle button
+        GestureDetector(
+          onTap: _toggle,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: _open
+                  ? theme.primary.withOpacity(0.12)
+                  : theme.secondaryBackground,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _open
+                    ? theme.primary.withOpacity(0.4)
+                    : theme.primaryText.withOpacity(0.08),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _open
+                      ? theme.primary.withOpacity(0.2)
+                      : Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: AnimatedRotation(
+              turns: _open ? 0.125 : 0.0,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              child: Icon(
+                Icons.layers_rounded,
+                size: 20,
+                color: _open ? theme.primary : theme.secondaryText,
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Style panel
+        AnimatedBuilder(
+          animation: _ctrl,
+          builder: (_, __) => FadeTransition(
+            opacity: _fade,
+            child: ScaleTransition(
+              scale: _scale,
+              alignment: Alignment.topRight,
+              child: _open
+                  ? Container(
+                      width: 160,
+                      decoration: BoxDecoration(
+                        color: theme.secondaryBackground,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: theme.primaryText.withOpacity(0.07),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 24,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                              child: Row(children: [
+                                Icon(Icons.layers_rounded,
+                                    size: 14, color: theme.secondaryText),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Map Style',
+                                  style: theme.labelSmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                    color: theme.secondaryText,
+                                  ),
+                                ),
+                              ]),
+                            ),
+                            ...widget.styles.asMap().entries.map((entry) {
+                              final i = entry.key;
+                              final style = entry.value;
+                              final isSelected =
+                                  widget.currentStyle.name == style.name;
+                              return _StyleRow(
+                                style: style,
+                                isSelected: isSelected,
+                                theme: theme,
+                                isLast: i == widget.styles.length - 1,
+                                onTap: () {
+                                  widget.onStyleSelected(style);
+                                  _toggle();
+                                },
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StyleRow extends StatefulWidget {
+  final MapStyle style;
+  final bool isSelected;
+  final KMTheme theme;
+  final bool isLast;
+  final VoidCallback onTap;
+
+  const _StyleRow({
+    required this.style,
+    required this.isSelected,
+    required this.theme,
+    required this.isLast,
+    required this.onTap,
+  });
+
+  @override
+  State<_StyleRow> createState() => _StyleRowState();
+}
+
+class _StyleRowState extends State<_StyleRow> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          margin: EdgeInsets.only(
+              left: 8, right: 8, bottom: widget.isLast ? 10 : 2),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+            color: widget.isSelected
+                ? theme.primary.withOpacity(0.1)
+                : _hovered
+                    ? theme.primaryText.withOpacity(0.04)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Row(children: [
+            Icon(
+              widget.style.icon,
+              size: 16,
+              color: widget.isSelected ? theme.primary : theme.secondaryText,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                widget.style.name,
+                style: theme.labelMedium.copyWith(
+                  fontSize: 13,
+                  fontWeight:
+                      widget.isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: widget.isSelected
+                      ? theme.primary
+                      : theme.primaryText.withOpacity(0.8),
+                ),
+              ),
+            ),
+            if (widget.isSelected)
+              Icon(Icons.check_rounded, size: 14, color: theme.primary),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOADING PULSE WIDGET
+// ═══════════════════════════════════════════════════════════════
+
+class _LoadingPulse extends StatefulWidget {
+  final KMTheme theme;
+  const _LoadingPulse({required this.theme});
+
+  @override
+  State<_LoadingPulse> createState() => _LoadingPulseState();
+}
+
+class _LoadingPulseState extends State<_LoadingPulse>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _ring1;
+  late Animation<double> _ring2;
+  late Animation<double> _ringOpacity1;
+  late Animation<double> _ringOpacity2;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 2000))
+      ..repeat();
+    _ring1 = Tween<double>(begin: 0.6, end: 1.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _ring2 = Tween<double>(begin: 0.6, end: 1.0).animate(CurvedAnimation(
+        parent: _ctrl, curve: const Interval(0.4, 1.0, curve: Curves.easeOut)));
+    _ringOpacity1 = Tween<double>(begin: 0.5, end: 0.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _ringOpacity2 = Tween<double>(begin: 0.5, end: 0.0).animate(CurvedAnimation(
+        parent: _ctrl, curve: const Interval(0.4, 1.0, curve: Curves.easeOut)));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => SizedBox(
+        width: 80,
+        height: 80,
+        child: Stack(alignment: Alignment.center, children: [
+          // Ring 1
+          Opacity(
+            opacity: _ringOpacity1.value,
+            child: Transform.scale(
+              scale: _ring1.value,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: theme.primary.withOpacity(0.4), width: 1.5),
+                ),
+              ),
+            ),
+          ),
+          // Ring 2
+          Opacity(
+            opacity: _ringOpacity2.value,
+            child: Transform.scale(
+              scale: _ring2.value,
+              child: Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: theme.primary.withOpacity(0.6), width: 1.5),
+                ),
+              ),
+            ),
+          ),
+          // Center dot
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.primary.withOpacity(0.12),
+              border:
+                  Border.all(color: theme.primary.withOpacity(0.6), width: 2),
+            ),
+            child:
+                Icon(Icons.location_on_rounded, color: theme.primary, size: 20),
+          ),
+        ]),
+      ),
+    );
   }
 }

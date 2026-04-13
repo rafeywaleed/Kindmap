@@ -91,9 +91,7 @@ class _MyAppState extends State<MyApp> {
               },
             ),
             routes: appRoutes,
-            initialRoute: '/splash'
-            // initialRoute: '/home');
-            );
+            initialRoute: '/splash');
       },
     );
   }
