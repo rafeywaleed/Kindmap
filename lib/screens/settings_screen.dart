@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:kindmap/config/app_theme.dart';
-import 'package:kindmap/widgets/page_icon_button.dart';
 
 import '../widgets/follow_button.dart';
 import '../widgets/social_tile.dart';
@@ -111,25 +110,19 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(
         backgroundColor: KMTheme.of(context).secondaryBackground,
         automaticallyImplyLeading: false,
-        leading: PageIconButton(
-          icon: Icons.arrow_back_ios_rounded,
-          theme: KMTheme.of(context),
-          onTap: () => Navigator.of(context).pop(),
+        leading: CustomIconButton(
+          borderColor: Colors.transparent,
+          borderRadius: 30,
+          buttonSize: 46,
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: KMTheme.of(context).primaryText,
+            size: 25,
+          ),
+          onPressed: () async {
+            Navigator.of(context).pop();
+          },
         ),
-
-        // CustomIconButton(
-        //   borderColor: Colors.transparent,
-        //   borderRadius: 30,
-        //   buttonSize: 46,
-        //   icon: Icon(
-        //     Icons.arrow_back_rounded,
-        //     color: KMTheme.of(context).primaryText,
-        //     size: 25,
-        //   ),
-        //   onPressed: () async {
-        //     Navigator.of(context).pop();
-        //   },
-        // ),
         elevation: 0,
       ),
       body: Column(
