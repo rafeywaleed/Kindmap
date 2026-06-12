@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -100,21 +101,16 @@ class PermissionService {
 
   static Future<bool> _handleNotificationPermissionWeb() async {
     try {
-      // Notifications require a service worker to be registered
-      if (!_isNotificationSupported()) {
-        debugPrint('Notification API not supported in this browser');
-        return false;
+      final messaging = FirebaseMessaging.instance;
+      NotificationSettings settings = await messaging.getNotificationSettings();
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        return true;
       }
 
-      // Check current notification permission status
-      final permission = _getNotificationPermissionWeb();
-      if (permission == 'default') {
-        // Request permission
-        final result = await _requestNotificationPermissionWeb();
-        return result == 'granted';
-      }
-
-      return permission == 'granted';
+      settings = await messaging.requestPermission();
+      return settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
     } catch (e) {
       debugPrint('Notification permission check (web) failed: $e');
       return false;
@@ -139,35 +135,6 @@ class PermissionService {
       return true;
     } catch (e) {
       return false;
-    }
-  }
-
-  static bool _isNotificationSupported() {
-    try {
-      if (!kIsWeb) return false;
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  static String _getNotificationPermissionWeb() {
-    try {
-      // This would use JavaScript interop to check:
-      // Notification.permission
-      return 'default';
-    } catch (e) {
-      return 'denied';
-    }
-  }
-
-  static Future<String> _requestNotificationPermissionWeb() async {
-    try {
-      // This would use JavaScript interop to request:
-      // Notification.requestPermission()
-      return 'default';
-    } catch (e) {
-      return 'denied';
     }
   }
 }

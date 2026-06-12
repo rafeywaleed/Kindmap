@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -812,7 +813,7 @@ class _MapsState extends State<Maps>
 
     try {
       _showLocationLoadingSnackBar();
-      final position = await Geolocator.getLastKnownPosition() ??
+      final position = await _getLastKnownPosition() ??
           await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
             timeLimit: const Duration(seconds: 10),
@@ -917,6 +918,20 @@ class _MapsState extends State<Maps>
     });
   }
 
+  /// Wraps [Geolocator.getLastKnownPosition], which throws
+  /// [UnimplementedError] on web (there's no "last known position" concept
+  /// in the browser Geolocation API). Returning null lets callers fall back
+  /// to [Geolocator.getCurrentPosition] instead of crashing the whole chain.
+  Future<Position?> _getLastKnownPosition() async {
+    if (kIsWeb) return null;
+    try {
+      return await Geolocator.getLastKnownPosition();
+    } catch (e) {
+      log('getLastKnownPosition failed: $e');
+      return null;
+    }
+  }
+
   Future<void> _requestLocationPermission() async {
     final permission = await Geolocator.requestPermission();
     setState(() {
@@ -946,7 +961,7 @@ class _MapsState extends State<Maps>
     if (!_locationServiceEnabled || !_hasLocationPermission) return;
 
     try {
-      final position = await Geolocator.getLastKnownPosition() ??
+      final position = await _getLastKnownPosition() ??
           await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
             timeLimit: const Duration(seconds: 5),
