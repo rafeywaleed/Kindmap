@@ -43,7 +43,8 @@ class _HelpState extends State<Help> {
                     icon: Icons.travel_explore_rounded,
                     title: 'Replay app walkthrough',
                     subtitle: 'See the quick tour of KindMap again',
-                    onTap: () => Navigator.of(context).pushNamed('/walkthrough'),
+                    onTap: () =>
+                        Navigator.of(context).pushNamed('/walkthrough'),
                   ),
                 ],
               ),
@@ -129,7 +130,7 @@ class _HelpState extends State<Help> {
                     ),
                     ExpandableInfoCard(
                       icon: Icons.shield_outlined,
-                      title: 'Why does KindMap need permissions?',
+                      title: 'Why does KindMap need permissions? ',
                       body: 'Location is used to show your position and place '
                           'pins accurately. Camera is used to take a photo '
                           'when creating a pin. You can review and manage '
