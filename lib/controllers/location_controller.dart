@@ -12,9 +12,18 @@ class LocationController {
     await prefs.setDouble('last_longitude', location.longitude);
     final cellInfo = getCellInfo(location.latitude, location.longitude);
     final cellId = cellInfo['cellId'];
-    FirebaseMessaging.instance.subscribeToTopic('grid_$cellId');
-    UserController()
-        .subscribeToGrid(FirebaseAuth.instance.currentUser!.uid, cellId);
+    try {
+      // subscribeToTopic throws UnimplementedError on web clients — don't
+      // let that bubble up and make the caller think the location fetch
+      // itself failed.
+      await FirebaseMessaging.instance.subscribeToTopic('grid_$cellId');
+    } catch (e) {
+      // Not supported on web; safe to ignore.
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await UserController().subscribeToGrid(user.uid, cellId);
+    }
   }
 
   Future<LatLng?> getLastLocation() async {

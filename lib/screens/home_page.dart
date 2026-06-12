@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:kindmap/widgets/location_dialog.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_theme.dart';
 import '../providers/profile_provider.dart';
@@ -46,10 +47,22 @@ class _HomePageState extends State<HomePage>
     await _maybeShowWalkthrough();
   }
 
+  static const _notificationDialogShownKey =
+      'has_shown_notification_permission_dialog';
+
   Future<void> _requestPermissions() async {
     final hasNotification =
         await PermissionService.handleNotificationPermission();
-    if (!hasNotification && mounted) {
+    if (hasNotification) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    // Once the browser/OS permission is denied, asking again can't change
+    // anything (browsers won't re-prompt and there's no "Allow" action left
+    // to take), so only ever show this dialog once instead of on every load.
+    if (prefs.getBool(_notificationDialogShownKey) ?? false) return;
+    await prefs.setBool(_notificationDialogShownKey, true);
+
+    if (mounted) {
       // Small delay so the map renders first — feels more intentional
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) showNotificationPermissionDialog(context);

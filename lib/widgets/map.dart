@@ -677,6 +677,19 @@ class _MapsState extends State<Maps>
   Future<void> _checkAndRequestPermissions() async {
     try {
       _locationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (kIsWeb) {
+        // geolocator_web's requestPermission() calls getCurrentPosition()
+        // under the hood and maps ANY failure (timeout, position
+        // unavailable, etc.) to LocationPermission.deniedForever — not just
+        // an actual permission denial. Trusting that would permanently
+        // disable the My Location button on devices/networks where a GPS
+        // fix is slow. The browser shows its own permission prompt when
+        // getCurrentPosition is called, so just let that happen and rely on
+        // _moveToCurrentLocation's/_setupLocationTracking's own error
+        // handling.
+        _hasLocationPermission = true;
+        return;
+      }
       _locationPermission = await Geolocator.checkPermission();
       _hasLocationPermission =
           _locationPermission == LocationPermission.always ||
@@ -933,6 +946,15 @@ class _MapsState extends State<Maps>
   }
 
   Future<void> _requestLocationPermission() async {
+    if (kIsWeb) {
+      // See _checkAndRequestPermissions: geolocator_web's requestPermission
+      // conflates "couldn't get a position" with "permission denied
+      // forever", so don't let it gate the My Location button. Let the
+      // browser's own permission prompt (triggered by getCurrentPosition)
+      // and _moveToCurrentLocation's error handling take it from here.
+      setState(() => _hasLocationPermission = true);
+      return;
+    }
     final permission = await Geolocator.requestPermission();
     setState(() {
       _locationPermission = permission;
