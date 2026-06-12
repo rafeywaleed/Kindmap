@@ -1,14 +1,13 @@
-import 'dart:io';
 import 'dart:convert';
 
+import 'package:camera/camera.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
-import 'package:googleapis_auth/auth_io.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:kindmap/widgets/page_icon_button.dart';
 import 'package:latlong2/latlong.dart';
@@ -19,8 +18,8 @@ import '../services/get_cell_info.dart';
 import '../config/app_theme.dart';
 
 class PinPage extends StatefulWidget {
-  final String imagePath;
-  const PinPage({super.key, required this.imagePath});
+  final XFile image;
+  const PinPage({super.key, required this.image});
 
   @override
   State<PinPage> createState() => _PinPageState();
@@ -37,6 +36,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   bool _isLoading = false;
   bool _isDone = false;
   LatLng? _location;
+  Uint8List? _imageBytes;
 
   // Entrance animations
   late AnimationController _entranceCtrl;
@@ -69,7 +69,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     getLocation();
-    getDotnev();
+    _loadImageBytes();
 
     _entranceCtrl = AnimationController(
       vsync: this,
@@ -159,13 +159,13 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> getDotnev() async {
-    await dotenv.load(fileName: '.env');
+  Future<void> _loadImageBytes() async {
+    final bytes = await widget.image.readAsBytes();
+    if (mounted) setState(() => _imageBytes = bytes);
   }
 
-  Future<String> _compressAndConvert(String path) async {
+  Future<String> _compressAndConvert(Uint8List bytes) async {
     try {
-      final bytes = await File(path).readAsBytes();
       final compressed = await FlutterImageCompress.compressWithList(
         bytes,
         minHeight: 800,
@@ -174,7 +174,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
       );
       return base64Encode(compressed);
     } catch (_) {
-      final bytes = await File(path).readAsBytes();
       return base64Encode(bytes);
     }
   }
@@ -191,7 +190,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
-      final base64Image = await _compressAndConvert(widget.imagePath);
+      final base64Image = await _compressAndConvert(_imageBytes!);
       final cellInfo = getCellInfo(_location!.latitude, _location!.longitude);
       final cellId = cellInfo['cellId'];
       final topic = cellInfo['topic'];
@@ -236,48 +235,26 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     }
   }
 
+  /// Asks the backend to push a "new pin nearby" notification to [topic].
+  /// The actual FCM send (and the service-account credentials it requires)
+  /// lives server-side — the client never holds that key.
   Future<void> _sendNotification(String topic) async {
     try {
-      await FirebaseMessaging.instance.subscribeToTopic(topic);
-      final url = Uri.parse(
-          'https://fcm.googleapis.com/v1/projects/kindmap-999d3/messages:send');
-      final token = await _getAccessToken();
-      await http.post(url,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: jsonEncode({
-            'message': {
-              'topic': topic,
-              'notification': {
-                'title': 'New Help Request Nearby',
-                'body': 'Someone needs assistance in your area',
-              },
-            }
-          }));
+      // Topic subscriptions aren't supported on web clients.
+      if (!kIsWeb) {
+        await FirebaseMessaging.instance.subscribeToTopic(topic);
+      }
+      await http
+          .post(
+            Uri.parse(
+                'https://kindmap.onrender.com/api/v1/notifications/send'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'topic': topic}),
+          )
+          .timeout(const Duration(seconds: 20));
     } catch (e) {
       debugPrint('Notification error: $e');
     }
-  }
-
-  Future<String> _getAccessToken() async {
-    final creds = ServiceAccountCredentials.fromJson({
-      'type': dotenv.env['type'],
-      'project_id': dotenv.env['project_id'],
-      'private_key_id': dotenv.env['private_key_id'],
-      'private_key': dotenv.env['private_key'],
-      'client_email': dotenv.env['client_email'],
-      'client_id': dotenv.env['client_id'],
-      'auth_uri': dotenv.env['auth_uri'],
-      'token_uri': dotenv.env['token_uri'],
-      'auth_provider_x509_cert_url': dotenv.env['auth_provider_x509_cert_url'],
-      'client_x509_cert_url': dotenv.env['client_x509_cert_url'],
-      'universe_domain': dotenv.env['universe_domain'],
-    });
-    final client = await clientViaServiceAccount(
-        creds, ['https://www.googleapis.com/auth/firebase.messaging']);
-    return client.credentials.accessToken.data;
   }
 
   void _showSnack(String msg, {bool isError = false}) {
@@ -464,8 +441,10 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              Image.file(
-                File(widget.imagePath),
+              _imageBytes == null
+                  ? Container(color: Colors.black12)
+                  : Image.memory(
+                _imageBytes!,
                 fit: BoxFit.cover,
               ),
               // Inner subtle vignette

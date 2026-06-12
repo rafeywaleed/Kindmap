@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:kindmap/firebase_options.dart';
@@ -38,43 +39,57 @@ class FCM {
   Future<void> _initMobileNotifications() async {
     await _firebaseMessaging.requestPermission();
     final fcmToken = await _firebaseMessaging.getToken();
-    debugPrint('Mobile FCM Token: $fcmToken');
+    debugPrint('FCM Token: $fcmToken');
 
     // Configure foreground notification presentation
     await _firebaseMessaging.setForegroundNotificationPresentationOptions(
         alert: true, badge: true, sound: true);
 
-    // Subscribe to topics
-    await _firebaseMessaging.subscribeToTopic('need_help');
+    // Topic subscriptions aren't supported on web clients; web users would
+    // need to be subscribed server-side via the Admin SDK using their token.
+    if (!kIsWeb) {
+      await _firebaseMessaging.subscribeToTopic('need_help');
+    }
 
-    // Initialize local notifications
-    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const settings = InitializationSettings(android: android);
+    // flutter_local_notifications has no web implementation, and
+    // onBackgroundMessage is handled by firebase-messaging-sw.js on web.
+    if (!kIsWeb) {
+      // Initialize local notifications
+      const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const settings = InitializationSettings(android: android);
 
-    await _localNotifications.initialize(
-      settings,
-      onDidReceiveNotificationResponse: (payload) {
-        if (payload.payload != null) {
-          final message = RemoteMessage.fromMap(jsonDecode(payload.payload!));
-          handleBackgroundMessage(message);
-        }
-      },
-    );
+      await _localNotifications.initialize(
+        settings,
+        onDidReceiveNotificationResponse: (payload) {
+          if (payload.payload != null) {
+            final message = RemoteMessage.fromMap(jsonDecode(payload.payload!));
+            handleBackgroundMessage(message);
+          }
+        },
+      );
 
-    // Create notification channel
-    final platform = _localNotifications.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    await platform?.createNotificationChannel(_androidChannel);
+      // Create notification channel
+      final platform = _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      await platform?.createNotificationChannel(_androidChannel);
+
+      FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
+    }
 
     // Handle different message scenarios
     _firebaseMessaging.getInitialMessage().then(handleBackgroundMessage);
     FirebaseMessaging.onMessageOpenedApp.listen(handleBackgroundMessage);
-    FirebaseMessaging.onBackgroundMessage(handleBackgroundMessage);
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen((message) async {
       final notification = message.notification;
       if (notification == null) return;
+
+      if (kIsWeb) {
+        debugPrint('🔔 Foreground message: ${notification.title}');
+        return;
+      }
 
       await _localNotifications.show(
           notification.hashCode,

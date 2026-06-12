@@ -161,7 +161,7 @@ class UserController {
         .then((response) {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        return data['avatarIndex'];
+        return data;
       } else {
         return 1;
       }
@@ -229,8 +229,7 @@ class UserController {
             "https://kindmap.onrender.com/api/v1/users/$userId/token"))
         .then((response) {
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        return data['token'];
+        return response.body;
       } else {
         throw UserFetchException(response);
       }
@@ -243,8 +242,7 @@ class UserController {
             "https://kindmap.onrender.com/api/v1/users/$userId/token?token=$token"))
         .then((response) {
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        return data['token'];
+        return response.body;
       } else {
         throw UserFetchException(response);
       }

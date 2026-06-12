@@ -141,39 +141,33 @@ class PinListView extends StatelessWidget {
         return PinBox(
           pin: pin,
           location: location,
-          onServe: () async {
-            try {
-              // Delete pin
-              await PinController().deletePin(pin.pinId);
+          onServe: () {
+            // Update the UI immediately — don't make the user wait on the
+            // server round-trip (the backend can be slow to wake up).
+            final mapProvider =
+                Provider.of<MapProvider>(context, listen: false);
+            final updatedMarkers = mapProvider.markers
+                .where((marker) => marker.point != markerLocation)
+                .toList();
+            mapProvider.setMarkers(updatedMarkers);
 
-              // Update local state
-              final mapProvider =
-                  Provider.of<MapProvider>(context, listen: false);
-              final updatedMarkers = mapProvider.markers
-                  .where((marker) => marker.point != markerLocation)
-                  .toList();
-              mapProvider.setMarkers(updatedMarkers);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('Thank you for helping!'),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            Navigator.pop(context);
 
-              // Show success message
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white),
-                        SizedBox(width: 8),
-                        Text('Thank you for helping!'),
-                      ],
-                    ),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-
-              // Close the bottom sheet AFTER removing marker
-              if (context.mounted) Navigator.pop(context);
-            } catch (e) {
+            // Delete on the server in the background.
+            PinController().deletePin(pin.pinId).catchError((e) {
               debugPrint('Error removing pin: $e');
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -183,7 +177,7 @@ class PinListView extends StatelessWidget {
                   ),
                 );
               }
-            }
+            });
           },
         );
       },

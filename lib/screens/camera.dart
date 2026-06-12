@@ -171,7 +171,7 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 650),
           reverseTransitionDuration: const Duration(milliseconds: 500),
-          pageBuilder: (_, __, ___) => PinPage(imagePath: image.path),
+          pageBuilder: (_, __, ___) => PinPage(image: image),
           transitionsBuilder: (_, animation, __, child) {
             final curved = CurvedAnimation(
               parent: animation,

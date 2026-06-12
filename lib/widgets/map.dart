@@ -834,46 +834,48 @@ class _MapsState extends State<Maps>
       pin: pin,
       userLocation: Provider.of<MapProvider>(context, listen: false).location ??
           const LatLng(0, 0),
-      onServe: () async {
-        try {
-          await PinController().deletePin(pin.pinId);
-          final mapProvider = Provider.of<MapProvider>(context, listen: false);
-          final updatedMarkers = mapProvider.markers
-              .where((m) => m.point != markerLocation)
-              .toList();
-          mapProvider.setMarkers(updatedMarkers);
+      onServe: () {
+        // Update the UI immediately — don't make the user wait on the
+        // server round-trip (the backend can be slow to wake up).
+        final mapProvider = Provider.of<MapProvider>(context, listen: false);
+        final updatedMarkers = mapProvider.markers
+            .where((m) => m.point != markerLocation)
+            .toList();
+        mapProvider.setMarkers(updatedMarkers);
 
-          if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(children: [
+              Icon(Icons.volunteer_activism_rounded,
+                  color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('Thank you for helping!', style: TextStyle(fontSize: 14)),
+            ]),
+            backgroundColor: const Color(0xFF0F6E56),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            margin: const EdgeInsets.all(12),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        Navigator.pop(context);
+
+        // Delete on the server in the background. If it fails, re-sync the
+        // markers so the pin reappears and the user can retry.
+        PinController().deletePin(pin.pinId).catchError((e) {
+          log('Error marking pin as served: $e');
+          if (mounted) {
+            loadMarkers();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: const Row(children: [
-                  Icon(Icons.volunteer_activism_rounded,
+                  Icon(Icons.error_outline_rounded,
                       color: Colors.white, size: 18),
                   SizedBox(width: 8),
-                  Text('Thank you for helping!',
-                      style: TextStyle(fontSize: 14)),
-                ]),
-                backgroundColor: const Color(0xFF0F6E56),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                margin: const EdgeInsets.all(12),
-                duration: const Duration(seconds: 3),
-              ),
-            );
-            Navigator.pop(context);
-          }
-        } catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(children: [
-                  const Icon(Icons.error_outline_rounded,
-                      color: Colors.white, size: 18),
-                  const SizedBox(width: 8),
                   Expanded(
-                      child: Text('Could not mark as served: $e',
-                          style: const TextStyle(fontSize: 13))),
+                      child: Text('Could not mark as served. Please try again.',
+                          style: TextStyle(fontSize: 13))),
                 ]),
                 backgroundColor: const Color(0xFFA32D2D),
                 behavior: SnackBarBehavior.floating,
@@ -883,7 +885,7 @@ class _MapsState extends State<Maps>
               ),
             );
           }
-        }
+        });
       },
     ).then((_) {
       setState(() => _selectedMarkerLocation = null);

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -163,22 +164,32 @@ class AuthServices {
 
   static Future<void> signInWithGoogle(BuildContext context) async {
     try {
-      GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      UserCredential userCredential;
 
-      if (googleUser == null) {
-        // User canceled the Google Sign In flow
-        return;
+      if (kIsWeb) {
+        // GoogleSignIn().signIn() isn't supported on web; Firebase Auth's
+        // popup flow handles the OAuth exchange directly.
+        userCredential = await FirebaseAuth.instance
+            .signInWithPopup(GoogleAuthProvider());
+      } else {
+        GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+        if (googleUser == null) {
+          // User canceled the Google Sign In flow
+          return;
+        }
+
+        GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
+
+        AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
       }
-
-      GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
 
       // Handle sign-in success
       ScaffoldMessenger.of(context).showSnackBar(
