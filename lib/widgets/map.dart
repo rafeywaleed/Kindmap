@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_theme.dart';
+import '../config/route_observer.dart';
 import '../controllers/grid_controller.dart';
 import '../controllers/pin_controller.dart';
 import '../controllers/user_controller.dart';
@@ -78,7 +79,7 @@ class Maps extends StatefulWidget {
 }
 
 class _MapsState extends State<Maps>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   // =============================================
   // Location & Map State
   // =============================================
@@ -204,8 +205,18 @@ class _MapsState extends State<Maps>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) {
+      kRouteObserver.subscribe(this, route);
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    kRouteObserver.unsubscribe(this);
     _locationFabAnimationController.dispose();
     _gridFabAnimationController.dispose();
     _markerAnimationController.dispose();
@@ -221,6 +232,13 @@ class _MapsState extends State<Maps>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _checkLocationService();
+  }
+
+  // Called when a pushed route (e.g. the camera/pin creation flow) is
+  // popped and this screen becomes visible again.
+  @override
+  void didPopNext() {
+    if (_currentCellId != null) loadMarkers();
   }
 
   // =============================================

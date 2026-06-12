@@ -1,6 +1,8 @@
-import "package:flutter/material.dart";
-import "package:flutter_animate/flutter_animate.dart";
-import "package:kindmap/config/app_theme.dart";
+import 'package:flutter/material.dart';
+
+import '../../config/app_theme.dart';
+import '../../widgets/settings_widgets.dart';
+import 'contact.dart';
 
 class Help extends StatefulWidget {
   const Help({super.key});
@@ -12,205 +14,132 @@ class Help extends StatefulWidget {
 class _HelpState extends State<Help> {
   @override
   Widget build(BuildContext context) {
-    var size = MediaQuery.of(context).size;
+    final theme = KMTheme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Help"),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
+      backgroundColor: theme.secondaryBackground,
+      appBar: settingsAppBar(context, 'Help'),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 40),
           children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(10, 40, 10, 40),
-              child: Column(
+            const FadeSlideIn(
+              child: SettingsHeroHeader(
+                icon: Icons.help_outline_rounded,
+                title: 'How can we help?',
+                subtitle: 'Quick answers to common questions about pinning, '
+                    'your profile, permissions and more.',
+              ),
+            ),
+            const FadeSlideIn(
+              delay: Duration(milliseconds: 60),
+              child: SettingsSectionLabel('Getting started'),
+            ),
+            const FadeSlideIn(
+              delay: Duration(milliseconds: 80),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    ExpandableInfoCard(
+                      icon: Icons.add_location_alt_outlined,
+                      title: 'How do I create a pin?',
+                      body: 'Tap the pin button on the map to open the camera, '
+                          'take a photo of the situation, then drop a pin at '
+                          'your current location. Your pin appears on the map '
+                          'for others nearby to see.',
+                    ),
+                    ExpandableInfoCard(
+                      icon: Icons.map_outlined,
+                      title: 'How do the map and grids work?',
+                      body: 'The map is divided into grids — small areas that '
+                          'group nearby pins together. Tap a grid to see how '
+                          'many active pins are inside it, and use the filters '
+                          'on the map to narrow down what you see.',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const FadeSlideIn(
+              delay: Duration(milliseconds: 120),
+              child: SettingsSectionLabel('Your profile'),
+            ),
+            const FadeSlideIn(
+              delay: Duration(milliseconds: 140),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    ExpandableInfoCard(
+                      icon: Icons.face_retouching_natural_outlined,
+                      title: 'How do I change my avatar?',
+                      body: 'Open Profile from the side menu, then double-tap '
+                          'your avatar. Confirm "Yes" and pick a new avatar '
+                          'from the gallery that opens.',
+                    ),
+                    ExpandableInfoCard(
+                      icon: Icons.badge_outlined,
+                      title: 'How do I change my name?',
+                      body: 'On the Profile page, type your new name in the '
+                          '"Change name" field and press done/enter on the '
+                          'keyboard to save it.',
+                    ),
+                    ExpandableInfoCard(
+                      icon: Icons.lock_outline_rounded,
+                      title: 'How do I change my password?',
+                      body: 'On the Profile page, open the "Change Password" '
+                          'section, enter your current password followed by '
+                          'the new password twice, then tap "Change Password".',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const FadeSlideIn(
+              delay: Duration(milliseconds: 180),
+              child: SettingsSectionLabel('Notifications & permissions'),
+            ),
+            const FadeSlideIn(
+              delay: Duration(milliseconds: 200),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    ExpandableInfoCard(
+                      icon: Icons.notifications_outlined,
+                      title: 'How do I manage notifications?',
+                      body:
+                          'Go to Notifications from the Settings page to turn '
+                          'push notifications on or off, and choose which '
+                          'types of alerts you want to receive.',
+                    ),
+                    ExpandableInfoCard(
+                      icon: Icons.shield_outlined,
+                      title: 'Why does KindMap need permissions?',
+                      body: 'Location is used to show your position and place '
+                          'pins accurately. Camera is used to take a photo '
+                          'when creating a pin. You can review and manage '
+                          'these any time from the Permissions page.',
+                    ),
+                    SizedBox(height: 4),
+                  ],
+                ),
+              ),
+            ),
+            const FadeSlideIn(
+              delay: Duration(milliseconds: 240),
+              child: SettingsSectionLabel('Still need help?'),
+            ),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 260),
+              child: SettingsCard(
                 children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text("How to change avatar",
-                          textAlign: TextAlign.left,
-                          style:
-                              KMTheme.of(context).bodyMedium.overrideTextStyle(
-                                    fontFamily: 'Plus Jakarta Sans',
-                                    fontSize: 18,
-                                    letterSpacing: 0,
-                                  )),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10, bottom: 10),
-                      child: Text(
-                        "Double click on your avatar and a change avatar option should appear on the profile page, click it  And you may change your avatar with the given options",
-                        textAlign: TextAlign.left,
-                        style: KMTheme.of(context).bodyMedium.overrideTextStyle(
-                              fontFamily: 'Readex Pro',
-                              fontSize: 15,
-                              letterSpacing: 0,
-                              fontWeight: FontWeight.normal,
-                            ),
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text("How to change name",
-                          textAlign: TextAlign.left,
-                          style:
-                              KMTheme.of(context).bodyMedium.overrideTextStyle(
-                                    fontFamily: 'Plus Jakarta Sans',
-                                    fontSize: 18,
-                                    letterSpacing: 0,
-                                  )),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10, bottom: 10),
-                      child: Text(
-                        'Simply go to the side bar and click profileFind the change name button in the profile page and proceed',
-                        textAlign: TextAlign.left,
-                        style: KMTheme.of(context).bodyMedium.overrideTextStyle(
-                              fontFamily: 'Readex Pro',
-                              fontSize: 15,
-                              letterSpacing: 0,
-                              fontWeight: FontWeight.normal,
-                            ),
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text("How to change the password ",
-                          textAlign: TextAlign.left,
-                          style:
-                              KMTheme.of(context).bodyMedium.overrideTextStyle(
-                                    fontFamily: 'Plus Jakarta Sans',
-                                    fontSize: 18,
-                                    letterSpacing: 0,
-                                  )),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10, bottom: 10),
-                      child: Text(
-                        'Change in passwords can be done through the profile page from Settings on the side barSimply give your current password and the password that you want it to change to',
-                        textAlign: TextAlign.left,
-                        style: KMTheme.of(context).bodyMedium.overrideTextStyle(
-                              fontFamily: 'Readex Pro',
-                              fontSize: 15,
-                              letterSpacing: 0,
-                              fontWeight: FontWeight.normal,
-                            ),
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text("Suggetion or Report",
-                          textAlign: TextAlign.left,
-                          style:
-                              KMTheme.of(context).bodyMedium.overrideTextStyle(
-                                    fontFamily: 'Plus Jakarta Sans',
-                                    fontSize: 18,
-                                    letterSpacing: 0,
-                                  )),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10, bottom: 10),
-                      child: Text(
-                        'For any suggestion or report you can go to Contact page of sidemenu bar',
-                        textAlign: TextAlign.left,
-                        style: KMTheme.of(context).bodyMedium.overrideTextStyle(
-                              fontFamily: 'Readex Pro',
-                              fontSize: 15,
-                              letterSpacing: 0,
-                              fontWeight: FontWeight.normal,
-                            ),
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text("Tip:",
-                          textAlign: TextAlign.left,
-                          style:
-                              KMTheme.of(context).bodyMedium.overrideTextStyle(
-                                    fontFamily: 'Plus Jakarta Sans',
-                                    fontSize: 18,
-                                    letterSpacing: 0,
-                                  )),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10, bottom: 10),
-                      child: Text(
-                        'You can go to profile page by simply double tapping you profile on sidemenu',
-                        textAlign: TextAlign.left,
-                        style: KMTheme.of(context).bodyMedium.overrideTextStyle(
-                              fontFamily: 'Readex Pro',
-                              fontSize: 15,
-                              letterSpacing: 0,
-                              fontWeight: FontWeight.normal,
-                            ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: size.height * 0.1,
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10, bottom: 10),
-                      child: Text(
-                        'You can watch the tutorial Youtube link here',
-                        textAlign: TextAlign.left,
-                        style: KMTheme.of(context).bodyMedium.overrideTextStyle(
-                              fontFamily: 'Readex Pro',
-                              fontSize: 15,
-                              letterSpacing: 0,
-                              fontWeight: FontWeight.normal,
-                            ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: size.height * 0.1,
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10, bottom: 10),
-                      child: Text(
-                        'Tell us, how can we help you via mail',
-                        textAlign: TextAlign.left,
-                        style: KMTheme.of(context).bodyMedium.overrideTextStyle(
-                              fontFamily: 'Readex Pro',
-                              fontSize: 15,
-                              letterSpacing: 0,
-                              fontWeight: FontWeight.normal,
-                            ),
-                      ),
-                    ),
+                  SettingsTile(
+                    icon: Icons.mail_outline_rounded,
+                    title: 'Contact support',
+                    subtitle: 'Email us at $kSupportEmail',
+                    onTap: () => Navigator.of(context).pushNamed('/contact'),
                   ),
                 ],
               ),

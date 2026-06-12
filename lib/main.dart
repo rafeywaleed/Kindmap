@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 
 import 'config/app_theme.dart';
+import 'config/route_observer.dart';
 import 'config/routes.dart';
 import 'firebase_options.dart';
 import 'providers/profile_provider.dart';
@@ -91,6 +92,7 @@ class _MyAppState extends State<MyApp> {
               },
             ),
             routes: appRoutes,
+            navigatorObservers: [kRouteObserver],
             initialRoute: '/splash');
       },
     );
