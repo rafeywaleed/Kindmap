@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -5,6 +7,10 @@ import 'package:latlong2/latlong.dart';
 class LocationService {
   static Future<LatLng?> getCurrentLocation() async {
     try {
+      if (kIsWeb) {
+        return await _getCurrentLocationWeb();
+      }
+
       await _checkLocationPermission();
       final position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
@@ -33,5 +39,74 @@ class LocationService {
       throw Exception(
           'Location permissions are permanently denied, we cannot request permissions.');
     }
+  }
+
+  /// Web implementation using browser Geolocation API
+  static Future<LatLng?> _getCurrentLocationWeb() async {
+    try {
+      debugPrint('Requesting location from browser Geolocation API');
+
+      // Use a completer to handle the callback-based Geolocation API
+      final completer = Completer<LatLng?>();
+      final timeoutDuration = const Duration(seconds: 15);
+
+      // Set up timeout
+      final timeoutTimer = Timer(timeoutDuration, () {
+        if (!completer.isCompleted) {
+          completer.completeError(
+            Exception('Location request timed out'),
+          );
+        }
+      });
+
+      // Handle the geolocation through JavaScript interop would happen here
+      // For now, we'll add the implementation
+      _requestGeolocationWeb(completer, timeoutTimer);
+
+      return await completer.future;
+    } catch (e) {
+      debugPrint('Error getting location from web API: $e');
+      return null;
+    }
+  }
+
+  /// Helper to request geolocation on web
+  /// This simulates what would happen via JavaScript interop
+  static void _requestGeolocationWeb(
+      Completer<LatLng?> completer, Timer timeoutTimer) {
+    // Note: In a real implementation, this would use dart:js_interop or
+    // dart:js to call the browser's navigator.geolocation.getCurrentPosition
+    // For now, we'll document the expected behavior:
+    //
+    // Example with js interop (not included yet):
+    // import 'dart:js_interop' as js;
+    //
+    // js.context['navigator'].callMethod('geolocation', []).callMethod(
+    //   'getCurrentPosition',
+    //   [
+    //     (position) {
+    //       timeoutTimer.cancel();
+    //       final coords = position['coords'];
+    //       completer.complete(LatLng(
+    //         coords['latitude'],
+    //         coords['longitude'],
+    //       ));
+    //     },
+    //     (error) {
+    //       timeoutTimer.cancel();
+    //       completer.completeError(
+    //         Exception('Geolocation error: ${error['message']}'),
+    //       );
+    //     },
+    //   ],
+    // );
+
+    // Placeholder error for now - will be replaced with actual JS interop
+    timeoutTimer.cancel();
+    completer.completeError(
+      Exception(
+        'Location not available on web. Use JS interop implementation.',
+      ),
+    );
   }
 }

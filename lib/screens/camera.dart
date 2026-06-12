@@ -85,13 +85,22 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
   }
 
   Future<void> _initCamera() async {
-    final status = await Permission.camera.request();
+    PermissionStatus status;
+    try {
+      status = await Permission.camera.request();
+    } catch (e) {
+      // permission_handler has limited web support, and browsers also
+      // restrict camera access to secure origins (HTTPS/localhost).
+      debugPrint('Camera permission request failed: $e');
+      status = PermissionStatus.denied;
+    }
+
     if (status.isDenied || status.isPermanentlyDenied) {
       if (mounted) {
-        // showCameraPermissionDialog(context, onSkip: () {
-        // Optionally pop back if user skips
-        Navigator.of(context).pop();
-        // });
+        showCameraPermissionDialog(
+          context,
+          onSkip: () => Navigator.of(context).pop(),
+        );
       }
       return;
     }

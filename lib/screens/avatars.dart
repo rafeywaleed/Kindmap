@@ -4,6 +4,7 @@ import "package:provider/provider.dart";
 
 import "../controllers/user_controller.dart";
 import "../providers/profile_provider.dart";
+import "app_walkthrough.dart";
 
 class Avatars extends StatefulWidget {
   const Avatars({super.key});
@@ -56,10 +57,19 @@ class _AvatarsState extends State<Avatars> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          uploadindex();
-          Navigator.of(context).pop();
+        onPressed: () async {
+          await uploadindex();
+          // The intro screens + avatar picker together form the new-user
+          // onboarding flow, so the separate feature walkthrough on the
+          // home screen shouldn't also play right after.
+          await markWalkthroughSeen();
           debugPrint('Selected Avatar Index: $selectedAvatarIndex');
+          if (context.mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/home',
+              (route) => false,
+            );
+          }
         },
         backgroundColor: Colors.blue,
         child: const Icon(Icons.check, size: 30, color: Colors.white),

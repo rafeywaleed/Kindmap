@@ -99,9 +99,11 @@ class PinController {
             Uri.parse("https://kindmap.onrender.com/api/v1/pins/delete/$pinID"))
         .timeout(const Duration(seconds: 20))
         .then((response) {
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        return data;
+      if (response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == deleted) {
+        if (response.body.isEmpty) return null;
+        return jsonDecode(response.body);
       } else {
         throw PinFetchException(response);
       }

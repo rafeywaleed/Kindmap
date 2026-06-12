@@ -56,22 +56,16 @@ class FollowBoxState extends State<FollowBox> {
                         "https://www.instagram.com/rafeywaleed_a5"),
                     socialTile(context, "Mohammed Azim Moula", "instagram",
                         "https://www.instagram.com/Azim"),
-                    socialTile(context, "Syeda Arriyan Fatima", "instagram",
-                        "https://www.instagram.com/rArriyan"),
                   ] else if (widget.s_media == "facebook") ...[
                     socialTile(context, "Abdul Rafey Waleed", "facebook",
                         "https://www.facebook.com/rafeywaleed_a5"),
                     socialTile(context, "Mohammed Azim Moula", "facebook",
                         "https://www.facebook.com/azimM"),
-                    socialTile(context, "Syeda Arriyan Fatima", "facebook",
-                        "https://www.facebook.com/arriyanF"),
                   ] else ...[
                     socialTile(context, "Abdul Rafey Waleed", "linkedin",
                         "https://www.linkedin.com/in/abdul-rafey-waleed-516052282/"),
                     socialTile(context, "Mohammed Azim Moula", "linkedin",
                         "https://www.linkedin.com/in/mohammed-azim-moula-7b07b4279/"),
-                    socialTile(context, "Syeda Arriyan Fatima", "linkedin",
-                        "https://www.linkedin.com/in/syeda-arriyan-fatima-a71346301/"),
                   ],
                 ],
               ),
@@ -82,122 +76,3 @@ class FollowBoxState extends State<FollowBox> {
     );
   }
 }
-
-
-//  if (follow == 0)
-//                   {
-//                     showMenu(
-//                         context: context,
-//                         position:
-//                             RelativeRect.fromLTRB(0, 0, 0, size.height - 200),
-//                         items: [
-//                           const PopupMenuItem(
-//                             value:
-//                                 'https://www.linkedin.com/in/abdul-rafey-waleed-516052282/',
-//                             child: ListTile(
-//                               leading: Icon(FontAwesomeIcons.linkedin),
-//                               title: Text('Abdul Rafey Waleed'),
-//                             ),
-//                           ),
-//                           const PopupMenuItem(
-//                             value:
-//                                 'https://www.linkedin.com/in/mohammed-azim-moula-7b07b4279/',
-//                             child: ListTile(
-//                               leading: Icon(FontAwesomeIcons.linkedin),
-//                               title: Text('Mohammed Azim Moula'),
-//                             ),
-//                           ),
-//                           const PopupMenuItem(
-//                             value:
-//                                 'https://www.linkedin.com/in/syeda-arriyan-fatima-a71346301/',
-//                             child: ListTile(
-//                               leading: Icon(FontAwesomeIcons.linkedin),
-//                               title: Text('Arriyan Fatima'),
-//                             ),
-//                           ),
-//                         ]).then<void>((String? itemSelected) {
-//                       if (itemSelected == null) return;
-//                       launch(itemSelected);
-//                     }),
-//                     debugPrint('IconButton pressed ...'),
-//                   }
-//                 else if (follow == 1)
-//                   {
-//                     showMenu(
-//                         context: context,
-//                         position:
-//                             RelativeRect.fromLTRB(0, 0, 160, size.height * 0.6),
-//                         items: [
-//                           const PopupMenuItem(
-//                             value:
-//                                 'https://www.linkedin.com/in/abdul-rafey-waleed-516052282/',
-//                             child: ListTile(
-//                               leading: Icon(FontAwesomeIcons.linkedin),
-//                               title: Text('Abdul Rafey Waleed'),
-//                             ),
-//                           ),
-//                           const PopupMenuItem(
-//                             value:
-//                                 'https://www.linkedin.com/in/mohammed-azim-moula-7b07b4279/',
-//                             child: ListTile(
-//                               leading: Icon(FontAwesomeIcons.linkedin),
-//                               title: Text('Mohammed Azim Moula'),
-//                             ),
-//                           ),
-//                           const PopupMenuItem(
-//                             value:
-//                                 'https://www.linkedin.com/in/syeda-arriyan-fatima-a71346301/',
-//                             child: ListTile(
-//                               leading: Icon(FontAwesomeIcons.linkedin),
-//                               title: Text('Arriyan Fatima'),
-//                             ),
-//                           ),
-//                         ]).then<void>((String? itemSelected) {
-//                       if (itemSelected == null) return;
-//                       launch(itemSelected);
-//                     }),
-//                     debugPrint('IconButton pressed ...'),
-//                   }
-//                 else if (follow == 2)
-//                   {
-//                     showMenu(
-//                         color: KMTheme.of(context).secondaryBackground,
-//                         shape: RoundedRectangleBorder(
-//                             borderRadius: BorderRadius.circular(16)),
-//                         context: context,
-//                         position: RelativeRect.fromLTRB(
-//                             size.width * 2,
-//                             size.height * 0.99,
-//                             size.width * 0.2,
-//                             size.height * 0),
-//                         items: [
-//                           const PopupMenuItem(
-//                             value:
-//                                 'https://www.linkedin.com/in/abdul-rafey-waleed-516052282/',
-//                             child: ListTile(
-//                               leading: Icon(FontAwesomeIcons.linkedin),
-//                               title: Text('Abdul Rafey Waleed'),
-//                             ),
-//                           ),
-//                           const PopupMenuItem(
-//                             value:
-//                                 'https://www.linkedin.com/in/mohammed-azim-moula-7b07b4279/',
-//                             child: ListTile(
-//                               leading: Icon(FontAwesomeIcons.linkedin),
-//                               title: Text('Mohammed Azim Moula'),
-//                             ),
-//                           ),
-//                           const PopupMenuItem(
-//                             value:
-//                                 'https://www.linkedin.com/in/syeda-arriyan-fatima-a71346301/',
-//                             child: ListTile(
-//                               leading: Icon(FontAwesomeIcons.linkedin),
-//                               title: Text('Arriyan Fatima'),
-//                             ),
-//                           ),
-//                         ]).then<void>((String? itemSelected) {
-//                       if (itemSelected == null) return;
-//                       launch(itemSelected);
-//                     }),
-//                     debugPrint('IconButton pressed ...'),
-//                   }

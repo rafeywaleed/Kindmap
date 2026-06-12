@@ -1,0 +1,16 @@
+# Copy this file to "android/key.properties" (same folder as this file) and
+# fill in your real release keystore details. DO NOT commit key.properties or
+# your .jks/.keystore file — both are already gitignored.
+#
+# To generate a release keystore (run once, keep the output file safe — if
+# you lose it you cannot publish updates to the same Play Store listing):
+#   keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA \
+#     -keysize 2048 -validity 10000 -alias upload
+#
+# Then place upload-keystore.jks somewhere safe (e.g. android/app/) and fill
+# in the values below.
+
+storeFile=upload-keystore.jks
+storePassword=REPLACE_WITH_KEYSTORE_PASSWORD
+keyAlias=upload
+keyPassword=REPLACE_WITH_KEY_PASSWORD

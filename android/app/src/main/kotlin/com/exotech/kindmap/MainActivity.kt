@@ -1,4 +1,4 @@
-package com.example.kindmap
+package com.exotech.kindmap
 
 import io.flutter.embedding.android.FlutterActivity
 

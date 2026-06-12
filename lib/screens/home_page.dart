@@ -12,6 +12,7 @@ import '../services/permission_service.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/map.dart';
 import '../widgets/pin_someone.dart';
+import 'app_walkthrough.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -42,6 +43,7 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _initializeApp() async {
     await _requestPermissions();
+    await _maybeShowWalkthrough();
   }
 
   Future<void> _requestPermissions() async {
@@ -52,6 +54,20 @@ class _HomePageState extends State<HomePage>
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) showNotificationPermissionDialog(context);
     }
+  }
+
+  Future<void> _maybeShowWalkthrough() async {
+    if (await hasSeenWalkthrough()) return;
+    if (!mounted) return;
+    // Small delay so the map renders first before the walkthrough opens.
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const AppWalkthroughScreen(),
+        fullscreenDialog: true,
+      ),
+    );
   }
 
   void _showPermissionDialog(String title, String message, String type) {
@@ -361,22 +377,28 @@ class _KindMapDrawerState extends State<_KindMapDrawer>
 
                       const SizedBox(height: 16),
 
-                      // Nav items
-                      ...List.generate(_navItems.length, (i) {
-                        return FadeTransition(
-                          opacity: _itemFades[i],
-                          child: SlideTransition(
-                            position: _itemSlides[i],
-                            child: _NavTile(
-                              item: _navItems[i],
-                              theme: theme,
-                              index: i,
-                            ),
+                      // Nav items (scrollable so they never overflow on
+                      // short screens / large text scales)
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: List.generate(_navItems.length, (i) {
+                              return FadeTransition(
+                                opacity: _itemFades[i],
+                                child: SlideTransition(
+                                  position: _itemSlides[i],
+                                  child: _NavTile(
+                                    item: _navItems[i],
+                                    theme: theme,
+                                    index: i,
+                                  ),
+                                ),
+                              );
+                            }),
                           ),
-                        );
-                      }),
-
-                      const Spacer(),
+                        ),
+                      ),
 
                       // Footer divider
                       FadeTransition(

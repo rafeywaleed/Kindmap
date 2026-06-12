@@ -674,13 +674,23 @@ class _MapsState extends State<Maps>
   }
 
   Future<void> _checkAndRequestPermissions() async {
-    _locationServiceEnabled = await Geolocator.isLocationServiceEnabled();
-    _locationPermission = await Geolocator.checkPermission();
-    _hasLocationPermission = _locationPermission == LocationPermission.always ||
-        _locationPermission == LocationPermission.whileInUse;
-    if (!_hasLocationPermission &&
-        _locationPermission != LocationPermission.deniedForever) {
-      await _requestLocationPermission();
+    try {
+      _locationServiceEnabled = await Geolocator.isLocationServiceEnabled();
+      _locationPermission = await Geolocator.checkPermission();
+      _hasLocationPermission =
+          _locationPermission == LocationPermission.always ||
+              _locationPermission == LocationPermission.whileInUse;
+      if (!_hasLocationPermission &&
+          _locationPermission != LocationPermission.deniedForever) {
+        await _requestLocationPermission();
+      }
+    } catch (e) {
+      // Geolocation can be unavailable — e.g. browsers block it on web
+      // origins that aren't HTTPS or localhost. Fall back gracefully so
+      // the rest of the map still loads without location features.
+      log('Location permission check failed: $e');
+      _locationServiceEnabled = false;
+      _hasLocationPermission = false;
     }
   }
 
@@ -730,23 +740,37 @@ class _MapsState extends State<Maps>
   }
 
   Future<void> _initializeMap() async {
-    await _checkAndRequestPermissions();
-    await _loadLastKnownLocation();
+    try {
+      await _checkAndRequestPermissions();
+      await _loadLastKnownLocation();
 
-    final prefs = await SharedPreferences.getInstance();
-    final savedStyleName = prefs.getString('map_style');
-    if (savedStyleName != null) {
-      final style = _mapStyles.firstWhere(
-        (s) => s.name == savedStyleName,
-        orElse: () => _mapStyles[0],
-      );
-      setState(() => _currentMapStyle = style);
+      final prefs = await SharedPreferences.getInstance();
+      final savedStyleName = prefs.getString('map_style');
+      if (savedStyleName != null) {
+        final style = _mapStyles.firstWhere(
+          (s) => s.name == savedStyleName,
+          orElse: () => _mapStyles[0],
+        );
+        setState(() => _currentMapStyle = style);
+      }
+
+      await _setupLocationTracking();
+      await loadMarkers();
+      await _moveToCurrentLocation();
+    } catch (e) {
+      log('Error initializing map: $e');
+    } finally {
+      // Always show the map, even without a real location — e.g. when
+      // location services/permissions are unavailable (web over an
+      // insecure/non-localhost origin, permission denied, etc.).
+      if (mounted) {
+        final mapProvider = Provider.of<MapProvider>(context, listen: false);
+        if (mapProvider.location == null) {
+          mapProvider.setLocation(const LatLng(0, 0));
+        }
+        setState(() => _isLoadingLocation = false);
+      }
     }
-
-    await _setupLocationTracking();
-    await loadMarkers();
-    await _moveToCurrentLocation();
-    setState(() => _isLoadingLocation = false);
   }
 
   Future<void> _loadLastKnownLocation() async {

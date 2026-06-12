@@ -1,4 +1,5 @@
 import '../screens/IntroScreens.dart';
+import '../screens/app_walkthrough.dart';
 import '../screens/auth_pages/login_form.dart';
 import '../screens/avatars.dart';
 import '../screens/camera.dart';
@@ -44,4 +45,5 @@ final appRoutes = {
   '/privacypolicy': (context) => const PrivacyPolicy(),
   '/notifications': (context) => const Notifications(),
   '/avatars': (context) => const Avatars(),
+  '/walkthrough': (context) => const AppWalkthroughScreen(),
 };

@@ -559,13 +559,14 @@ class _LoginFormState extends State<LoginForm> with TickerProviderStateMixin {
       }
 
       // Only reached on success
-      attempts++;
       try {
         await FirebaseMessaging.instance.subscribeToTopic('need_help');
       } catch (_) {
         // Non-critical — messaging errors don't block the auth flow
       }
     } on FirebaseAuthException catch (e) {
+      // Reveal "Forgot password?" after a failed sign-in attempt.
+      if (login) setState(() => attempts++);
       _handleFirebaseError(e);
     } on FirebaseException catch (e) {
       // Non-auth Firebase errors (Firestore, Storage, etc.)
@@ -1433,31 +1434,13 @@ class _LoginFormState extends State<LoginForm> with TickerProviderStateMixin {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _SocialTile(
-                  icon: FontAwesomeIcons.google,
-                  label: 'Google',
-                  isDark: isDark,
-                  theme: theme,
-                  // ← uses the new wrapper with full error handling
-                  onTap: _googleSignIn,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _SocialTile(
-                  icon: FontAwesomeIcons.apple,
-                  label: 'Apple',
-                  isDark: isDark,
-                  theme: theme,
-                  iconSize: 21,
-                  onTap: () =>
-                      debugPrint('Apple sign-in — not yet implemented'),
-                ),
-              ),
-            ],
+          _SocialTile(
+            icon: FontAwesomeIcons.google,
+            label: 'Continue with Google',
+            isDark: isDark,
+            theme: theme,
+            // ← uses the new wrapper with full error handling
+            onTap: _googleSignIn,
           ),
         ],
       ),
@@ -1808,7 +1791,6 @@ class _SocialTile extends StatefulWidget {
   final bool isDark;
   final KMTheme theme;
   final VoidCallback onTap;
-  final double iconSize;
 
   const _SocialTile({
     required this.icon,
@@ -1816,7 +1798,6 @@ class _SocialTile extends StatefulWidget {
     required this.isDark,
     required this.theme,
     required this.onTap,
-    this.iconSize = 17,
   });
 
   @override
@@ -1894,7 +1875,7 @@ class _SocialTileState extends State<_SocialTile>
             children: [
               FaIcon(
                 widget.icon,
-                size: widget.iconSize,
+                size: 17,
                 color: isDark
                     ? Colors.white.withOpacity(0.7)
                     : Colors.black.withOpacity(0.65),

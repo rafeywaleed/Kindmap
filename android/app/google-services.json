@@ -45,7 +45,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:403643543889:android:1305182e5a9ca9593ae370",
         "android_client_info": {
-          "package_name": "com.example.kindmap"
+          "package_name": "com.exotech.kindmap"
         }
       },
       "oauth_client": [
@@ -53,7 +53,7 @@
           "client_id": "403643543889-jhqrmo86qep0sjurdctelui62e14f111.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.example.kindmap",
+            "package_name": "com.exotech.kindmap",
             "certificate_hash": "9bbb3186b2189ef16d8f272bdab59362c395cbb4"
           }
         },

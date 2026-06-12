@@ -125,7 +125,8 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         elevation: 0,
       ),
-      body: Column(
+      body: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -331,70 +332,71 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 0, 8),
-            child: Text(
-              'Follow us on',
-              style: KMTheme.of(context).labelMedium.copyWith(
-                    fontFamily: 'Readex Pro',
-                    letterSpacing: 0,
-                  ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 0),
-            child: Row(
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                SocialMediaIconButton(
-                  borderColor: KMTheme.of(context).alternate,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  buttonSize: 48,
-                  fillColor: KMTheme.of(context).secondaryBackground,
-                  icon: FaIcon(
-                    FontAwesomeIcons.instagram,
-                    color: KMTheme.of(context).secondaryText,
-                    size: 24,
-                  ),
-                  onPressed: () {
-                    showFollowBox("instagram");
-                  },
-                ),
-                SocialMediaIconButton(
-                  borderColor: KMTheme.of(context).alternate,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  buttonSize: 48,
-                  fillColor: KMTheme.of(context).secondaryBackground,
-                  icon: FaIcon(
-                    FontAwesomeIcons.facebookF,
-                    color: KMTheme.of(context).secondaryText,
-                    size: 24,
-                  ),
-                  onPressed: () {
-                    showFollowBox("facebook");
-                  },
-                ),
-                SocialMediaIconButton(
-                  borderColor: KMTheme.of(context).alternate,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  buttonSize: 48,
-                  fillColor: KMTheme.of(context).secondaryBackground,
-                  icon: FaIcon(
-                    FontAwesomeIcons.linkedin,
-                    color: KMTheme.of(context).secondaryText,
-                    size: 24,
-                  ),
-                  onPressed: () {
-                    showFollowBox("linkedin");
-                  },
-                ),
-              ],
-            ),
-          ),
-          const Spacer(),
+          // "Follow us" links now live only on the Contact page.
+          // Padding(
+          //   padding: const EdgeInsetsDirectional.fromSTEB(16, 4, 0, 8),
+          //   child: Text(
+          //     'Follow us on',
+          //     style: KMTheme.of(context).labelMedium.copyWith(
+          //           fontFamily: 'Readex Pro',
+          //           letterSpacing: 0,
+          //         ),
+          //   ),
+          // ),
+          // Padding(
+          //   padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 0),
+          //   child: Row(
+          //     mainAxisSize: MainAxisSize.max,
+          //     children: [
+          //       SocialMediaIconButton(
+          //         borderColor: KMTheme.of(context).alternate,
+          //         borderRadius: 12,
+          //         borderWidth: 1,
+          //         buttonSize: 48,
+          //         fillColor: KMTheme.of(context).secondaryBackground,
+          //         icon: FaIcon(
+          //           FontAwesomeIcons.instagram,
+          //           color: KMTheme.of(context).secondaryText,
+          //           size: 24,
+          //         ),
+          //         onPressed: () {
+          //           showFollowBox("instagram");
+          //         },
+          //       ),
+          //       SocialMediaIconButton(
+          //         borderColor: KMTheme.of(context).alternate,
+          //         borderRadius: 12,
+          //         borderWidth: 1,
+          //         buttonSize: 48,
+          //         fillColor: KMTheme.of(context).secondaryBackground,
+          //         icon: FaIcon(
+          //           FontAwesomeIcons.facebookF,
+          //           color: KMTheme.of(context).secondaryText,
+          //           size: 24,
+          //         ),
+          //         onPressed: () {
+          //           showFollowBox("facebook");
+          //         },
+          //       ),
+          //       SocialMediaIconButton(
+          //         borderColor: KMTheme.of(context).alternate,
+          //         borderRadius: 12,
+          //         borderWidth: 1,
+          //         buttonSize: 48,
+          //         fillColor: KMTheme.of(context).secondaryBackground,
+          //         icon: FaIcon(
+          //           FontAwesomeIcons.linkedin,
+          //           color: KMTheme.of(context).secondaryText,
+          //           size: 24,
+          //         ),
+          //         onPressed: () {
+          //           showFollowBox("linkedin");
+          //         },
+          //       ),
+          //     ],
+          //   ),
+          // ),
+          const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 0, 0),
             child: Text(
@@ -440,6 +442,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ]..add(const SizedBox(height: 64)),
+        ),
       ),
     );
   }

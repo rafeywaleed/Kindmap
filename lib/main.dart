@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'config/app_theme.dart';
@@ -13,9 +14,17 @@ import 'screens/home_page.dart';
 import 'services/fcm_service.dart';
 import 'providers/map_provider.dart';
 import 'providers/theme_provider.dart';
+import 'widgets/responsive_web_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Lock the app to portrait orientation on mobile devices.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -89,8 +98,11 @@ class _MyAppState extends State<MyApp> {
               },
             ),
             routes: appRoutes,
+            navigatorKey: kNavigatorKey,
             navigatorObservers: [kRouteObserver],
-            initialRoute: '/splash');
+            initialRoute: '/splash',
+            builder: (context, child) =>
+                ResponsiveWebGate(child: child!));
       },
     );
   }

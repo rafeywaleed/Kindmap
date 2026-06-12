@@ -35,6 +35,19 @@ class _HelpState extends State<Help> {
               delay: Duration(milliseconds: 60),
               child: SettingsSectionLabel('Getting started'),
             ),
+            FadeSlideIn(
+              delay: const Duration(milliseconds: 70),
+              child: SettingsCard(
+                children: [
+                  SettingsTile(
+                    icon: Icons.travel_explore_rounded,
+                    title: 'Replay app walkthrough',
+                    subtitle: 'See the quick tour of KindMap again',
+                    onTap: () => Navigator.of(context).pushNamed('/walkthrough'),
+                  ),
+                ],
+              ),
+            ),
             const FadeSlideIn(
               delay: Duration(milliseconds: 80),
               child: Padding(

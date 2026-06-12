@@ -7,6 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:kindmap/firebase_options.dart';
 
+import '../config/app_theme.dart';
+import '../config/route_observer.dart';
+
 Future<void> handleBackgroundMessage(RemoteMessage? message) async {
   // Required: ensure Firebase is initialized in background isolate
   if (Firebase.apps.isEmpty) {
@@ -37,13 +40,31 @@ class FCM {
   }
 
   Future<void> _initMobileNotifications() async {
-    await _firebaseMessaging.requestPermission();
-    final fcmToken = await _firebaseMessaging.getToken();
-    debugPrint('FCM Token: $fcmToken');
+    // On web, requesting notification permission / a token requires a
+    // secure context (HTTPS or localhost) and a registered service worker.
+    // Over plain HTTP (e.g. testing via a LAN IP) these calls throw, but the
+    // rest of init (foreground message listeners, etc.) should still run.
+    try {
+      await _firebaseMessaging.requestPermission();
+    } catch (e) {
+      debugPrint('Notification permission request failed: $e');
+    }
+
+    try {
+      final fcmToken = await _firebaseMessaging.getToken();
+      debugPrint('FCM Token: $fcmToken');
+    } catch (e) {
+      debugPrint('Failed to get FCM token: $e');
+    }
 
     // Configure foreground notification presentation
-    await _firebaseMessaging.setForegroundNotificationPresentationOptions(
-        alert: true, badge: true, sound: true);
+    try {
+      await _firebaseMessaging.setForegroundNotificationPresentationOptions(
+          alert: true, badge: true, sound: true);
+    } catch (e) {
+      debugPrint(
+          'Failed to set foreground notification presentation options: $e');
+    }
 
     // Topic subscriptions aren't supported on web clients; web users would
     // need to be subscribed server-side via the Admin SDK using their token.
@@ -88,6 +109,7 @@ class FCM {
 
       if (kIsWeb) {
         debugPrint('🔔 Foreground message: ${notification.title}');
+        _showWebForegroundNotification(notification);
         return;
       }
 
@@ -106,5 +128,72 @@ class FCM {
           ),
           payload: jsonEncode(message.toMap()));
     });
+  }
+
+  /// Shows an in-app banner for foreground push notifications on web, since
+  /// flutter_local_notifications has no web implementation and the browser
+  /// only surfaces notifications via the service worker when the tab is
+  /// unfocused.
+  void _showWebForegroundNotification(RemoteNotification notification) {
+    final context = kNavigatorKey.currentState?.overlay?.context;
+    if (context == null) return;
+
+    final theme = KMTheme.of(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: theme.secondaryBackground,
+        elevation: 6,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: theme.primaryText.withOpacity(0.06)),
+        ),
+        duration: const Duration(seconds: 4),
+        content: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: theme.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(Icons.notifications_active_rounded,
+                  size: 18, color: theme.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (notification.title != null)
+                    Text(
+                      notification.title!,
+                      style: theme.bodyMedium.copyWith(
+                        fontFamily: 'Readex Pro',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  if (notification.body != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      notification.body!,
+                      style: theme.labelSmall.copyWith(
+                        color: theme.secondaryText,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
