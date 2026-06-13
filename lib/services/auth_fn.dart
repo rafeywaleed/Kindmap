@@ -139,8 +139,10 @@ class AuthServices {
     }
 
     if (!context.mounted) return;
-    Navigator.pushReplacementNamed(
-        context, isNewUser ? '/walkthrough_signup' : '/home');
+    // Every Google sign-in (new account or existing) goes through the
+    // walkthrough/avatar flow — only a normal email/password sign-in to an
+    // existing account goes straight to '/home'.
+    Navigator.pushReplacementNamed(context, '/walkthrough_signup');
   }
 
   /// Resolves an `account-exists-with-different-credential` error by

@@ -1,3 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+
 import '../screens/IntroScreens.dart';
 import '../screens/app_walkthrough.dart';
 import '../screens/auth_pages/login_form.dart';
@@ -17,18 +20,18 @@ import '../screens/splash_screen.dart';
 import '../widgets/map.dart';
 
 final appRoutes = {
-  // '/': (context) => StreamBuilder(
-  //       stream: FirebaseAuth.instance.authStateChanges(),
-  //       builder: (context, snapshot) {
-  //         if (snapshot.hasData) {
-  //           return const HomePage();
-  //         } else if (snapshot.hasError) {
-  //           return const Center(child: Text('Error'));
-  //         } else {
-  //           return const LoginForm();
-  //         }
-  //       },
-  //     ),
+  '/': (context) => StreamBuilder(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return const HomePage();
+          } else if (snapshot.hasError) {
+            return const Center(child: Text('Error'));
+          } else {
+            return const LoginForm();
+          }
+        },
+      ),
   '/splash': (context) => const SplashScreen(),
   '/auth': (context) => const LoginForm(),
   '/home': (context) => const HomePage(),

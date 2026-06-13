@@ -9,8 +9,6 @@ import 'config/route_observer.dart';
 import 'config/routes.dart';
 import 'firebase_options.dart';
 import 'providers/profile_provider.dart';
-import 'screens/auth_pages/login_form.dart';
-import 'screens/home_page.dart';
 import 'services/fcm_service.dart';
 import 'providers/map_provider.dart';
 import 'providers/theme_provider.dart';
@@ -85,24 +83,11 @@ class _MyAppState extends State<MyApp> {
             theme: LightModeTheme().toThemeData(),
             darkTheme: DarkModeTheme().toThemeData(),
             themeMode: themeProvider.themeMode,
-            home: StreamBuilder(
-              stream: FirebaseAuth.instance.authStateChanges(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  return HomePage();
-                } else if (snapshot.hasError) {
-                  return const Center(child: Text('Error'));
-                } else {
-                  return const LoginForm();
-                }
-              },
-            ),
             routes: appRoutes,
             navigatorKey: kNavigatorKey,
             navigatorObservers: [kRouteObserver],
             initialRoute: '/splash',
-            builder: (context, child) =>
-                ResponsiveWebGate(child: child!));
+            builder: (context, child) => ResponsiveWebGate(child: child!));
       },
     );
   }

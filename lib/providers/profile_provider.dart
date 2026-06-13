@@ -39,19 +39,36 @@ class ProfileProvider with ChangeNotifier {
   Future<void> loadProfile() async {
     if (_userId == null) return;
 
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-      final User? user = await _userController.fetchUserById(_userId!);
-      _user = user;
-      _avatarIndex = user!.avatarIndex;
-    } catch (e) {
-      _error = 'Failed to load profile: $e';
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    // Retry a few times before giving up: right after sign-up the backend
+    // profile-creation request may still be in flight, and the free-tier
+    // backend can also be cold-starting on its first request after a while.
+    // Without this, a single failed fetch here left the profile empty until
+    // the next sign-in or app restart.
+    const retryDelays = [
+      Duration.zero,
+      Duration(seconds: 2),
+      Duration(seconds: 4),
+    ];
+
+    for (final delay in retryDelays) {
+      if (delay > Duration.zero) await Future.delayed(delay);
+      try {
+        final user = await _userController.fetchUserById(_userId!);
+        _user = user;
+        _avatarIndex = user?.avatarIndex;
+        _error = null;
+        break;
+      } catch (e) {
+        _error = 'Failed to load profile: $e';
+      }
     }
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<void> updateName(String newName) async {
