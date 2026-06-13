@@ -10,6 +10,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:kindmap/widgets/page_icon_button.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -20,6 +21,14 @@ import '../services/get_cell_info.dart';
 import '../config/app_theme.dart';
 import '../widgets/location_dialog.dart';
 
+enum LocationStatus {
+  unknown,
+  ready,
+  serviceDisabled,
+  permissionDenied,
+  permissionPermanentlyDenied,
+}
+
 class PinPage extends StatefulWidget {
   final XFile image;
   const PinPage({super.key, required this.image});
@@ -28,7 +37,9 @@ class PinPage extends StatefulWidget {
   State<PinPage> createState() => _PinPageState();
 }
 
-class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
+class _PinPageState extends State<PinPage>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
+  // ADDED: WidgetsBindingObserver
   final FocusNode _unfocusNode = FocusNode();
   final TextEditingController _noteCtrl = TextEditingController();
   final TextEditingController _locationCtrl = TextEditingController();
@@ -41,7 +52,12 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   LatLng? _location;
   Uint8List? _imageBytes;
 
-  // Entrance animations
+  // New state
+  LocationStatus _locationStatus = LocationStatus.unknown;
+  bool _isConnected = true;
+  StreamSubscription? _connectivitySubscription;
+
+  // Animations
   late AnimationController _entranceCtrl;
   late Animation<double> _imageFade;
   late Animation<double> _imageScale;
@@ -49,13 +65,9 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   late Animation<Offset> _formSlide;
   late Animation<double> _btnFade;
   late Animation<Offset> _btnSlide;
-
-  // Success animation
   late AnimationController _successCtrl;
   late Animation<double> _successScale;
   late Animation<double> _successFade;
-
-  // Pin button press
   late AnimationController _pinBtnCtrl;
   late Animation<double> _pinBtnScale;
 
@@ -71,7 +83,9 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _checkConnectivity();
+    WidgetsBinding.instance
+        .addObserver(this); // ADDED: Listen to lifecycle changes
+    _checkConnectivityAndListen();
     getLocation();
     _loadImageBytes();
 
@@ -135,6 +149,8 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // ADDED: Remove observer
+    _connectivitySubscription?.cancel();
     _entranceCtrl.dispose();
     _successCtrl.dispose();
     _pinBtnCtrl.dispose();
@@ -146,40 +162,70 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> _checkConnectivity() async {
-    if (!await hasNetworkConnection() && mounted) {
-      showNoInternetSnackBar(context);
+  // ADDED: Lifecycle observer – retry location when app returns to foreground
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Only retry if location is not already ready
+      if (_locationStatus != LocationStatus.ready && mounted) {
+        getLocation();
+      }
     }
   }
 
+  Future<void> _checkConnectivityAndListen() async {
+    final hasConnection = await hasNetworkConnection();
+    setState(() => _isConnected = hasConnection);
+    if (!hasConnection && mounted) {
+      showNoInternetSnackBar(context);
+    }
+
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen((connectivityResult) {
+      if (mounted) {
+        final isConnected = connectivityResult != ConnectivityResult.none;
+        setState(() => _isConnected = isConnected);
+        if (!isConnected) {
+          showNoInternetSnackBar(context);
+        }
+      }
+    });
+  }
+
   Future<void> getLocation() async {
+    setState(() => _locationStatus = LocationStatus.unknown);
     try {
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
         if (perm == LocationPermission.denied) {
+          setState(() => _locationStatus = LocationStatus.permissionDenied);
           if (mounted) showLocationPermissionDialog(context);
           return;
         }
       }
       if (perm == LocationPermission.deniedForever) {
+        setState(
+            () => _locationStatus = LocationStatus.permissionPermanentlyDenied);
         if (mounted) showLocationPermissionDialog(context);
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      if (mounted)
-        setState(() => _location = LatLng(pos.latitude, pos.longitude));
+      setState(() {
+        _location = LatLng(pos.latitude, pos.longitude);
+        _locationStatus = LocationStatus.ready;
+      });
     } catch (e) {
       if (e is LocationServiceDisabledException) {
+        setState(() => _locationStatus = LocationStatus.serviceDisabled);
         if (mounted) showLocationServiceDialog(context);
       } else if (e is PermissionDeniedException) {
-        if (mounted) showLocationPermissionDialog(context);
+        setState(() => _locationStatus = LocationStatus.permissionDenied);
+        // if (mounted) showLocationPermissionDialog(context);
       } else if (e is PositionUpdateException || e is TimeoutException) {
-        // On web, isLocationServiceEnabled() always reports true, so a
-        // position timeout/unavailable error is often actually caused by
-        // device location services being off — point the user there.
+        setState(() => _locationStatus = LocationStatus.serviceDisabled);
         if (mounted) showLocationServiceDialog(context);
       }
       debugPrint('Location error: $e');
@@ -206,6 +252,27 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   }
 
   Future<void> _submitPin() async {
+    // Prevent multiple submissions while loading
+    if (_isLoading) return;
+
+    // 1. Quick offline check
+    if (!_isConnected) {
+      HapticFeedback.mediumImpact();
+      _showOfflineDialog();
+      return;
+    }
+
+    // 2. Location check
+    if (_locationStatus != LocationStatus.ready) {
+      HapticFeedback.mediumImpact();
+      if (_locationStatus == LocationStatus.serviceDisabled) {
+        showLocationServiceDialog(context);
+      } else {
+        // showLocationPermissionDialog(context);
+      }
+      return;
+    }
+
     if (_location == null) {
       _showSnack('Still fetching location…', isError: true);
       return;
@@ -240,41 +307,63 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
         createdBy: userId,
       );
 
+      // Save the pin (this is the critical part)
       await PinController().addPin(pin);
-      await _sendNotification(topic);
 
-      setState(() {
-        _isLoading = false;
-        _isDone = true;
+      // Send notification in the background – don't await it, so it doesn't block success flow
+      _sendNotification(topic).catchError((e) {
+        debugPrint('Notification error (non-blocking): $e');
       });
+
+      // Mark as finished and show success overlay
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isDone = true;
+        });
+      }
 
       await _successCtrl.forward();
       HapticFeedback.heavyImpact();
 
       await Future.delayed(const Duration(milliseconds: 1400));
-      if (mounted)
+      if (mounted) {
         Navigator.of(context)
           ..pop() // pin page
           ..pop(); // camera page
+      }
     } catch (e) {
       setState(() => _isLoading = false);
-      _showSnack('Error creating pin: $e', isError: true);
+
+      final errorString = e.toString();
+      if (errorString.contains('SocketException') ||
+          errorString.contains('Failed host lookup') ||
+          errorString.contains('ClientException')) {
+        _showOfflineDialog();
+      } else {
+        _showSnack('Something went wrong. Please try again.', isError: true);
+      }
     }
   }
 
-  /// Asks the backend to push a "new pin nearby" notification to [topic].
-  /// The actual FCM send (and the service-account credentials it requires)
-  /// lives server-side — the client never holds that key.
+  void _showOfflineDialog() {
+    showNoInternetDialog(
+      context,
+      onTryAgain: () {
+        // Re-check connectivity when user taps "Try Again"
+        _checkConnectivityAndListen();
+      },
+    );
+  }
+
   Future<void> _sendNotification(String topic) async {
     try {
-      // Topic subscriptions aren't supported on web clients.
       if (!kIsWeb) {
         await FirebaseMessaging.instance.subscribeToTopic(topic);
       }
       await http
           .post(
-            Uri.parse(
-                'https://kindmap.onrender.com/api/v1/notifications/send'),
+            Uri.parse('https://kindmap.onrender.com/api/v1/notifications/send'),
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode({'topic': topic}),
           )
@@ -311,14 +400,10 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
         backgroundColor: theme.primaryBackground,
         body: Stack(
           children: [
-            // ── Main content ──────────────────────────────────
             SafeArea(
               child: Column(
                 children: [
-                  // Top bar
                   _buildTopBar(theme),
-
-                  // Scrollable form
                   Expanded(
                     child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
@@ -326,7 +411,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Image preview
                           FadeTransition(
                             opacity: _imageFade,
                             child: ScaleTransition(
@@ -334,10 +418,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                               child: _buildImageCard(theme, size),
                             ),
                           ),
-
                           const SizedBox(height: 24),
-
-                          // Form fields
                           SlideTransition(
                             position: _formSlide,
                             child: FadeTransition(
@@ -345,10 +426,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                               child: _buildFormCard(theme),
                             ),
                           ),
-
                           const SizedBox(height: 20),
-
-                          // Timer selector
                           SlideTransition(
                             position: _formSlide,
                             child: FadeTransition(
@@ -363,8 +441,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                 ],
               ),
             ),
-
-            // ── Pin button ────────────────────────────────────
             Positioned(
               bottom: 0,
               left: 0,
@@ -377,8 +453,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                 ),
               ),
             ),
-
-            // ── Success overlay ───────────────────────────────
             if (_isDone) _buildSuccessOverlay(theme),
           ],
         ),
@@ -387,19 +461,53 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   }
 
   Widget _buildTopBar(KMTheme theme) {
+    Color indicatorColor;
+    String statusText;
+
+    if (!_isConnected) {
+      indicatorColor = Colors.red;
+      statusText = 'Offline';
+    } else {
+      switch (_locationStatus) {
+        case LocationStatus.ready:
+          indicatorColor = Colors.green;
+          statusText = 'Location ready';
+          break;
+        case LocationStatus.unknown:
+          indicatorColor = Colors.orange;
+          statusText = 'Getting location…';
+          break;
+        case LocationStatus.serviceDisabled:
+          indicatorColor = Colors.red;
+          statusText = 'Location off';
+          break;
+        case LocationStatus.permissionDenied:
+        case LocationStatus.permissionPermanentlyDenied:
+          indicatorColor = Colors.red;
+          statusText = 'Location permission needed';
+          break;
+      }
+    }
+
+    if (!_isConnected && _locationStatus != LocationStatus.ready) {
+      statusText = 'Offline · Location off';
+    } else if (!_isConnected) {
+      statusText = 'Offline';
+    } else if (_locationStatus != LocationStatus.ready &&
+        _locationStatus != LocationStatus.unknown) {
+      statusText = 'Location unavailable';
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          // Back
           PageIconButton(
             icon: Icons.arrow_back_ios_rounded,
             theme: theme,
             onTap: () => Navigator.of(context).pop(),
           ),
-
           const Spacer(),
-
           Column(
             children: [
               Text(
@@ -412,7 +520,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                   color: theme.primaryText,
                 ),
               ),
-              // Location status
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -422,25 +529,24 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                     height: 6,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _location != null ? Colors.green : Colors.orange,
+                      color: indicatorColor,
                     ),
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    _location != null ? 'Location ready' : 'Getting location…',
+                    statusText,
                     style: theme.bodySmall.copyWith(
                       fontSize: 11,
-                      color: theme.secondaryText.withOpacity(0.6),
+                      color: indicatorColor == Colors.red
+                          ? Colors.red
+                          : theme.secondaryText.withOpacity(0.6),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-
           const Spacer(),
-
-          // Placeholder for symmetry
           const SizedBox(width: 40),
         ],
       ),
@@ -471,10 +577,9 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
               _imageBytes == null
                   ? Container(color: Colors.black12)
                   : Image.memory(
-                _imageBytes!,
-                fit: BoxFit.cover,
-              ),
-              // Inner subtle vignette
+                      _imageBytes!,
+                      fit: BoxFit.cover,
+                    ),
               DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -487,7 +592,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                   ),
                 ),
               ),
-              // Photo badge
               Positioned(
                 bottom: 12,
                 right: 12,
@@ -540,7 +644,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Note field
           _buildFieldSection(
             theme: theme,
             icon: Icons.edit_note_rounded,
@@ -554,8 +657,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
             ),
             isFirst: true,
           ),
-
-          // Divider
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Divider(
@@ -563,8 +664,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
               height: 1,
             ),
           ),
-
-          // Location details
           _buildFieldSection(
             theme: theme,
             icon: Icons.place_outlined,
@@ -825,7 +924,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                 borderRadius: BorderRadius.circular(18),
                 child: Stack(
                   children: [
-                    // Highlight
                     Positioned(
                       top: 0,
                       left: 0,
@@ -835,7 +933,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
                         color: Colors.white.withOpacity(0.07),
                       ),
                     ),
-                    // Content
                     Center(
                       child: AnimatedSwitcher(
                         duration: const Duration(milliseconds: 280),
@@ -950,8 +1047,6 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     );
   }
 }
-
-// ── Timer option model ────────────────────────────────────────────────────────
 
 class _TimerOption {
   final String label;

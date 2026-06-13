@@ -818,9 +818,11 @@ class _MapsState extends State<Maps>
       if (!_hasLocationPermission) return;
     }
     if (_currentLocation != null) {
-      await LocationController().saveLastLocation(_currentLocation!);
+      // Animate immediately to the location
       _animateToLocation(_currentLocation!);
       setState(() => _isUsingCurrentLocation = true);
+      // Save location in the background (don't await)
+      LocationController().saveLastLocation(_currentLocation!);
       return;
     }
 
@@ -836,10 +838,11 @@ class _MapsState extends State<Maps>
       _currentCellId = getCellId(position.latitude, position.longitude);
       checkIfSubscribedToCurrentGrid();
       mapProvider.setLocation(_currentLocation!);
-      await LocationController().saveLastLocation(_currentLocation!);
       _animateToLocation(_currentLocation!);
       setState(() => _isUsingCurrentLocation = true);
-      await _saveLocation(_currentLocation!);
+      // Save location in the background (don't await)
+      LocationController().saveLastLocation(_currentLocation!);
+      _saveLocation(_currentLocation!);
       _hideLocationLoadingSnackBar();
     } catch (e) {
       _hideLocationLoadingSnackBar();
@@ -901,7 +904,11 @@ class _MapsState extends State<Maps>
               Icon(Icons.volunteer_activism_rounded,
                   color: Colors.white, size: 18),
               SizedBox(width: 8),
-              Text('Thank you for helping!', style: TextStyle(fontSize: 14)),
+              Text('Thank you for helping!',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                  )),
             ]),
             backgroundColor: const Color(0xFF0F6E56),
             behavior: SnackBarBehavior.floating,

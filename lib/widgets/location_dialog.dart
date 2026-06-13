@@ -11,12 +11,6 @@ import '../config/app_theme.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings helpers
 // ─────────────────────────────────────────────────────────────────────────────
-//
-// Neither Geolocator.openLocationSettings() nor permission_handler's
-// openAppSettings() have a meaningful destination on web — the former throws
-// (web has no OS location settings page) and the latter silently no-ops
-// (there's no "app settings" page for a website). On web, browsers manage
-// site permissions themselves, so point users there instead.
 
 void _showWebPermissionHint(ScaffoldMessengerState? messenger) {
   messenger?.showSnackBar(
@@ -37,9 +31,7 @@ Future<void> _openLocationSettings(ScaffoldMessengerState? messenger) async {
   }
   try {
     await Geolocator.openLocationSettings();
-  } catch (_) {
-    // No-op if unsupported on this platform.
-  }
+  } catch (_) {}
 }
 
 Future<void> _openAppSettings(ScaffoldMessengerState? messenger) async {
@@ -49,16 +41,13 @@ Future<void> _openAppSettings(ScaffoldMessengerState? messenger) async {
   }
   try {
     await openAppSettings();
-  } catch (_) {
-    // No-op if unsupported on this platform.
-  }
+  } catch (_) {}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Show the "location services disabled" dialog
 Future<void> showLocationServiceDialog(BuildContext context) {
   return showDialog(
     context: context,
@@ -70,7 +59,6 @@ Future<void> showLocationServiceDialog(BuildContext context) {
   );
 }
 
-/// Show the "location permission denied" dialog
 Future<void> showLocationPermissionDialog(
   BuildContext context, {
   VoidCallback? onSkip,
@@ -86,7 +74,6 @@ Future<void> showLocationPermissionDialog(
   );
 }
 
-/// Show the "notification permission" dialog
 Future<void> showNotificationPermissionDialog(BuildContext context) {
   return showDialog(
     context: context,
@@ -113,9 +100,23 @@ Future<void> showCameraPermissionDialog(
   );
 }
 
-/// Show a one-time, subtle heads-up for web users that location accuracy
-/// and camera performance depend on the browser, and that the mobile app
-/// gives a smoother experience.
+/// Internet connection lost dialog.
+/// Provide an optional [onTryAgain] callback.
+Future<void> showNoInternetDialog(
+  BuildContext context, {
+  VoidCallback? onTryAgain,
+}) {
+  return showDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierColor: Colors.black.withOpacity(0.4),
+    builder: (_) => _LocationDialog(
+      type: _LocationDialogType.internetOffline,
+      onTryAgain: onTryAgain,
+    ),
+  );
+}
+
 void showWebExperienceSnackBar(BuildContext context) {
   if (!context.mounted) return;
   final theme = KMTheme.of(context);
@@ -150,8 +151,6 @@ void showWebExperienceSnackBar(BuildContext context) {
   );
 }
 
-/// Show a subtle "no internet connection" snackbar, styled to match the
-/// app's theme rather than the harsh default red Material snackbar.
 void showNoInternetSnackBar(BuildContext context) {
   if (!context.mounted) return;
   final theme = KMTheme.of(context);
@@ -191,6 +190,7 @@ enum _LocationDialogType {
   permissionDenied,
   notificationPermission,
   cameraPermission,
+  internetOffline, // <-- NEW
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -200,10 +200,12 @@ enum _LocationDialogType {
 class _LocationDialog extends StatefulWidget {
   final _LocationDialogType type;
   final VoidCallback? onSkip;
+  final VoidCallback? onTryAgain; // used by internetOffline
 
   const _LocationDialog({
     required this.type,
     this.onSkip,
+    this.onTryAgain,
   });
 
   @override
@@ -291,8 +293,6 @@ class _LocationDialogState extends State<_LocationDialog>
     super.dispose();
   }
 
-  // ── Content per dialog type ────────────────────────────────────────────────
-
   _DialogContent get _content {
     switch (widget.type) {
       case _LocationDialogType.serviceDisabled:
@@ -353,8 +353,7 @@ class _LocationDialogState extends State<_LocationDialog>
       case _LocationDialogType.cameraPermission:
         return _DialogContent(
           icon: Icons.camera_alt_outlined,
-          iconColor:
-              const Color(0xFF2E7D32), // Deep green – adjust to your brand
+          iconColor: const Color(0xFF2E7D32),
           iconBg: const Color(0xFFE8F5E9),
           title: 'Camera access needed',
           subtitle:
@@ -371,6 +370,22 @@ class _LocationDialogState extends State<_LocationDialog>
             widget.onSkip?.call();
           },
         );
+
+      case _LocationDialogType.internetOffline:
+        return _DialogContent(
+          icon: Icons.wifi_off_rounded,
+          iconColor: const Color(0xFFD32F2F),
+          iconBg: const Color(0xFFFFEBEE),
+          title: 'No Internet Connection',
+          subtitle: 'Please check your Wi-Fi or mobile data and try again.',
+          primaryLabel: 'Try Again',
+          secondaryLabel: 'Dismiss',
+          onPrimary: () {
+            Navigator.pop(context);
+            widget.onTryAgain?.call();
+          },
+          onSecondary: () => Navigator.pop(context),
+        );
     }
   }
 
@@ -379,95 +394,84 @@ class _LocationDialogState extends State<_LocationDialog>
     final theme = KMTheme.of(context);
     final content = _content;
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
-      child: FadeTransition(
-        opacity: _dialogFade,
-        child: SlideTransition(
-          position: _dialogSlide,
-          child: ScaleTransition(
-            scale: _dialogScale,
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.secondaryBackground,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.16),
-                    blurRadius: 40,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Animated icon with pulse rings
-                    _AnimatedIcon(
-                      iconCtrl: _iconCtrl,
-                      pulseCtrl: _pulseCtrl,
-                      iconBounce: _iconBounce,
-                      pulseRing: _pulseRing,
-                      pulseOpacity: _pulseOpacity,
-                      icon: content.icon,
-                      iconColor: content.iconColor,
-                      iconBg: content.iconBg,
-                    ),
-
-                    const SizedBox(height: 22),
-
-                    // Title
-                    Text(
-                      content.title,
-                      textAlign: TextAlign.center,
-                      style: theme.titleLarge.copyWith(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.4,
-                        color: theme.primaryText,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Subtitle
-                    Text(
-                      content.subtitle,
-                      textAlign: TextAlign.center,
-                      style: theme.bodyMedium.copyWith(
-                        fontSize: 13.5,
-                        height: 1.55,
-                        color: theme.primaryText.withOpacity(0.52),
-                      ),
-                    ),
-
-                    const SizedBox(height: 26),
-
-                    // Primary button
-                    _DialogButton(
-                      label: content.primaryLabel,
-                      color: content.iconColor,
-                      theme: theme,
-                      onPressed: content.onPrimary,
-                      isPrimary: true,
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Secondary button
-                    _DialogButton(
-                      label: content.secondaryLabel,
-                      color: content.iconColor,
-                      theme: theme,
-                      onPressed:
-                          content.onSecondary ?? () => Navigator.pop(context),
-                      isPrimary: false,
+    return ClipRRect(
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+        child: FadeTransition(
+          opacity: _dialogFade,
+          child: SlideTransition(
+            position: _dialogSlide,
+            child: ScaleTransition(
+              scale: _dialogScale,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.secondaryBackground,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.16),
+                      blurRadius: 40,
+                      offset: const Offset(0, 12),
                     ),
                   ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _AnimatedIcon(
+                        iconCtrl: _iconCtrl,
+                        pulseCtrl: _pulseCtrl,
+                        iconBounce: _iconBounce,
+                        pulseRing: _pulseRing,
+                        pulseOpacity: _pulseOpacity,
+                        icon: content.icon,
+                        iconColor: content.iconColor,
+                        iconBg: content.iconBg,
+                      ),
+                      const SizedBox(height: 22),
+                      Text(
+                        content.title,
+                        textAlign: TextAlign.center,
+                        style: theme.titleLarge.copyWith(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.4,
+                          color: theme.primaryText,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        content.subtitle,
+                        textAlign: TextAlign.center,
+                        style: theme.bodyMedium.copyWith(
+                          fontSize: 13.5,
+                          height: 1.55,
+                          color: theme.primaryText.withOpacity(0.52),
+                        ),
+                      ),
+                      const SizedBox(height: 26),
+                      _DialogButton(
+                        label: content.primaryLabel,
+                        color: content.iconColor,
+                        theme: theme,
+                        onPressed: content.onPrimary,
+                        isPrimary: true,
+                      ),
+                      const SizedBox(height: 8),
+                      _DialogButton(
+                        label: content.secondaryLabel,
+                        color: content.iconColor,
+                        theme: theme,
+                        onPressed:
+                            content.onSecondary ?? () => Navigator.pop(context),
+                        isPrimary: false,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -511,7 +515,6 @@ class _AnimatedIcon extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Outer pulse ring
           AnimatedBuilder(
             animation: pulseCtrl,
             builder: (_, __) => Opacity(
@@ -532,8 +535,6 @@ class _AnimatedIcon extends StatelessWidget {
               ),
             ),
           ),
-
-          // Inner pulse ring (offset phase)
           AnimatedBuilder(
             animation: pulseCtrl,
             builder: (_, __) {
@@ -556,8 +557,6 @@ class _AnimatedIcon extends StatelessWidget {
               );
             },
           ),
-
-          // Icon sphere
           ScaleTransition(
             scale: iconBounce,
             child: Container(
