@@ -44,14 +44,39 @@ class _HomePageState extends State<HomePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {}
 
   Future<void> _initializeApp() async {
-    await _checkConnectivity();
+    await _checkConnectivityWithRetry();
     await _requestPermissions();
     await _showWebExperienceNotice();
   }
 
-  Future<void> _checkConnectivity() async {
-    if (!await hasNetworkConnection() && mounted) {
-      showNoInternetSnackBar(context);
+  // Add this method to _HomePageState (replaces the simple _checkConnectivity)
+
+  Future<void> _checkConnectivityWithRetry() async {
+    // First immediate check
+    bool hasConnection = await hasNetworkConnection();
+    if (hasConnection) return;
+
+    // Offline: show snackbar, wait 5 seconds, then retry
+    if (mounted) showNoInternetSnackBar(context);
+    await Future.delayed(const Duration(seconds: 3));
+
+    // Second check after delay
+    hasConnection = await hasNetworkConnection();
+    if (hasConnection) {
+      // Now online – optionally dismiss any previous dialog and refresh UI
+      if (mounted) ScaffoldMessenger.of(context).clearSnackBars();
+      return;
+    }
+
+    // Still offline – show the styled dialog
+    if (mounted) {
+      showNoInternetDialog(
+        context,
+        onTryAgain: () async {
+          // When user taps "Try Again", re-run the whole check
+          await _checkConnectivityWithRetry();
+        },
+      );
     }
   }
 
