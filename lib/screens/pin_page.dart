@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:camera/camera.dart';
@@ -14,8 +15,10 @@ import 'package:latlong2/latlong.dart';
 
 import '../controllers/pin_controller.dart';
 import '../models/pin_model.dart';
+import '../services/connectivity_service.dart';
 import '../services/get_cell_info.dart';
 import '../config/app_theme.dart';
+import '../widgets/location_dialog.dart';
 
 class PinPage extends StatefulWidget {
   final XFile image;
@@ -68,6 +71,7 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    _checkConnectivity();
     getLocation();
     _loadImageBytes();
 
@@ -142,12 +146,25 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  Future<void> _checkConnectivity() async {
+    if (!await hasNetworkConnection() && mounted) {
+      showNoInternetSnackBar(context);
+    }
+  }
+
   Future<void> getLocation() async {
     try {
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
-        if (perm == LocationPermission.denied) return;
+        if (perm == LocationPermission.denied) {
+          if (mounted) showLocationPermissionDialog(context);
+          return;
+        }
+      }
+      if (perm == LocationPermission.deniedForever) {
+        if (mounted) showLocationPermissionDialog(context);
+        return;
       }
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
@@ -155,6 +172,16 @@ class _PinPageState extends State<PinPage> with TickerProviderStateMixin {
       if (mounted)
         setState(() => _location = LatLng(pos.latitude, pos.longitude));
     } catch (e) {
+      if (e is LocationServiceDisabledException) {
+        if (mounted) showLocationServiceDialog(context);
+      } else if (e is PermissionDeniedException) {
+        if (mounted) showLocationPermissionDialog(context);
+      } else if (e is PositionUpdateException || e is TimeoutException) {
+        // On web, isLocationServiceEnabled() always reports true, so a
+        // position timeout/unavailable error is often actually caused by
+        // device location services being off — point the user there.
+        if (mounted) showLocationServiceDialog(context);
+      }
       debugPrint('Location error: $e');
     }
   }

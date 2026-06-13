@@ -6,16 +6,10 @@ import '../config/app_theme.dart';
 
 const String kHasSeenWalkthroughKey = 'has_seen_app_walkthrough';
 
-/// Marks the onboarding walkthrough as seen so it won't auto-show again.
+/// Marks the onboarding walkthrough as seen.
 Future<void> markWalkthroughSeen() async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool(kHasSeenWalkthroughKey, true);
-}
-
-/// Whether the user has already completed or skipped the walkthrough.
-Future<bool> hasSeenWalkthrough() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool(kHasSeenWalkthroughKey) ?? false;
 }
 
 class _WalkthroughPageData {
@@ -72,7 +66,9 @@ const List<_WalkthroughPageData> _kWalkthroughPages = [
 /// first time a user reaches the home screen, and can be replayed any time
 /// from Settings → Help.
 class AppWalkthroughScreen extends StatefulWidget {
-  const AppWalkthroughScreen({super.key});
+  final bool fromSignUp;
+
+  const AppWalkthroughScreen({super.key, this.fromSignUp = false});
 
   @override
   State<AppWalkthroughScreen> createState() => _AppWalkthroughScreenState();
@@ -90,7 +86,11 @@ class _AppWalkthroughScreenState extends State<AppWalkthroughScreen> {
 
   void _finish() {
     markWalkthroughSeen();
-    if (Navigator.of(context).canPop()) {
+    if (widget.fromSignUp) {
+      // Coming from sign-up, go to avatar selection
+      Navigator.of(context).pushReplacementNamed('/avatars_signup');
+    } else if (Navigator.of(context).canPop()) {
+      // Coming from settings, just pop
       Navigator.of(context).pop();
     } else {
       Navigator.of(context).pushReplacementNamed('/home');
@@ -225,8 +225,7 @@ class _WalkthroughPage extends StatelessWidget {
             height: 120,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color:
-                  isDark ? const Color(0xFF1E1416) : const Color(0xFFFAC6C3),
+              color: isDark ? const Color(0xFF1E1416) : const Color(0xFFFAC6C3),
               border: Border.all(
                 color: theme.primary.withOpacity(0.3),
                 width: 2,

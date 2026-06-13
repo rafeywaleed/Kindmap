@@ -1,10 +1,12 @@
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kindmap/widgets/location_dialog.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../config/app_theme.dart';
+import '../services/connectivity_service.dart';
 import 'pin_page.dart';
 
 class CameraPage extends StatefulWidget {
@@ -39,6 +41,7 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _initFuture = _initCamera();
+    _checkConnectivity();
 
     _entranceCtrl = AnimationController(
       vsync: this,
@@ -84,25 +87,41 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _initCamera() async {
-    PermissionStatus status;
-    try {
-      status = await Permission.camera.request();
-    } catch (e) {
-      // permission_handler has limited web support, and browsers also
-      // restrict camera access to secure origins (HTTPS/localhost).
-      debugPrint('Camera permission request failed: $e');
-      status = PermissionStatus.denied;
+  Future<void> _checkConnectivity() async {
+    if (!await hasNetworkConnection() && mounted) {
+      showNoInternetSnackBar(context);
     }
+  }
 
-    if (status.isDenied || status.isPermanentlyDenied) {
-      if (mounted) {
-        showCameraPermissionDialog(
-          context,
-          onSkip: () => Navigator.of(context).pop(),
-        );
+  Future<void> _initCamera() async {
+    // On web, permission_handler's camera request just opens and immediately
+    // stops a getUserMedia stream to probe the permission, then
+    // availableCameras()/CameraController.initialize() below each open their
+    // own getUserMedia stream — stacking these causes the camera light and
+    // browser "using camera" indicator to flicker on/off several times before
+    // settling. The browser already prompts for permission via getUserMedia,
+    // so skip this redundant pre-check on web and rely on the catch block
+    // below to detect a denial instead.
+    if (!kIsWeb) {
+      PermissionStatus status;
+      try {
+        status = await Permission.camera.request();
+      } catch (e) {
+        // permission_handler has limited web support, and browsers also
+        // restrict camera access to secure origins (HTTPS/localhost).
+        debugPrint('Camera permission request failed: $e');
+        status = PermissionStatus.denied;
       }
-      return;
+
+      if (status.isDenied || status.isPermanentlyDenied) {
+        if (mounted) {
+          showCameraPermissionDialog(
+            context,
+            onSkip: () => Navigator.of(context).pop(),
+          );
+        }
+        return;
+      }
     }
     try {
       final cameras = await availableCameras();
@@ -120,6 +139,15 @@ class _CameraPageState extends State<CameraPage> with TickerProviderStateMixin {
       }
     } catch (e) {
       debugPrint('Camera init error: $e');
+      if (kIsWeb && e is CameraException && e.code == 'CameraAccessDenied') {
+        if (mounted) {
+          showCameraPermissionDialog(
+            context,
+            onSkip: () => Navigator.of(context).pop(),
+          );
+        }
+        return;
+      }
       rethrow;
     }
   }

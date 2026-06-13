@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:kindmap/config/app_theme.dart';
@@ -293,43 +294,47 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(0, 0, 0, 1),
-                child: InkWell(
-                  splashColor: Colors.transparent,
-                  focusColor: Colors.transparent,
-                  hoverColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  onTap: () async {
-                    Navigator.of(context).pushNamed('/permissions');
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    decoration: const BoxDecoration(),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.max,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Permissions ',
-                            style: KMTheme.of(context).titleLarge.copyWith(
-                                  fontFamily: 'Outfit',
-                                  letterSpacing: 0,
-                                ),
-                          ),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            color: KMTheme.of(context).secondaryText,
-                            size: 24,
-                          ),
-                        ],
+              // Permission management is a mobile OS concept (app settings,
+              // runtime permission dialogs); there's nothing meaningful to
+              // show or manage here on web.
+              if (!kIsWeb)
+                Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(0, 0, 0, 1),
+                  child: InkWell(
+                    splashColor: Colors.transparent,
+                    focusColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    onTap: () async {
+                      Navigator.of(context).pushNamed('/permissions');
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.max,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Permissions ',
+                              style: KMTheme.of(context).titleLarge.copyWith(
+                                    fontFamily: 'Outfit',
+                                    letterSpacing: 0,
+                                  ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: KMTheme.of(context).secondaryText,
+                              size: 24,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
           // "Follow us" links now live only on the Contact page.

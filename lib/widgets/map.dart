@@ -843,7 +843,21 @@ class _MapsState extends State<Maps>
       _hideLocationLoadingSnackBar();
     } catch (e) {
       _hideLocationLoadingSnackBar();
-      _showErrorSnackBar('Unable to get current location. Please try again.');
+      if (e is PermissionDeniedException) {
+        // The browser/OS denied the permission prompt — guide the user to
+        // re-enable it instead of showing a generic error.
+        setState(() => _hasLocationPermission = false);
+        _showPermissionDeniedDialog();
+      } else if (e is LocationServiceDisabledException) {
+        _showLocationServiceDialog();
+      } else if (e is PositionUpdateException || e is TimeoutException) {
+        // On web, isLocationServiceEnabled() always reports true, so a
+        // position timeout/unavailable error is often actually caused by
+        // device location services being off — point the user there.
+        _showLocationServiceDialog();
+      } else {
+        _showErrorSnackBar('Unable to get current location. Please try again.');
+      }
       log('Error getting location: $e');
     }
   }

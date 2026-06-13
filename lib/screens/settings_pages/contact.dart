@@ -9,6 +9,7 @@ import '../../widgets/settings_widgets.dart';
 import '../../widgets/social_tile.dart';
 
 const String kSupportEmail = 'kindmap02@gmail.com';
+const String kQuickSupportEmail = 'a.rafeywaleeda5@gmail.com';
 
 class Contact extends StatefulWidget {
   const Contact({super.key});
@@ -18,10 +19,11 @@ class Contact extends StatefulWidget {
 }
 
 class _ContactState extends State<Contact> {
-  Future<void> _sendEmail(String subject) async {
+  Future<void> _sendEmail(String subject,
+      {String email = kSupportEmail}) async {
     final uri = Uri(
       scheme: 'mailto',
-      path: kSupportEmail,
+      path: email,
       query: 'subject=${Uri.encodeComponent(subject)}',
     );
 
@@ -29,7 +31,7 @@ class _ContactState extends State<Contact> {
       await launchUrl(uri);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open mail app for $kSupportEmail')),
+        SnackBar(content: Text('Could not open mail app for $email')),
       );
     }
   }
@@ -66,8 +68,7 @@ class _ContactState extends State<Contact> {
               child: const SettingsHeroHeader(
                 icon: Icons.support_agent_rounded,
                 title: 'We\'re here to help',
-                subtitle:
-                    'Have a question, found a bug, or want to suggest '
+                subtitle: 'Have a question, found a bug, or want to suggest '
                     'something new? Reach out — we read every message.',
               ),
             ),
@@ -119,59 +120,125 @@ class _ContactState extends State<Contact> {
                 ],
               ),
             ),
-            FadeSlideIn(
-              delay: const Duration(milliseconds: 200),
-              child: const SettingsSectionLabel('Follow us'),
+            Divider(
+              endIndent: 20,
+              indent: 20,
+              height: 32,
+              thickness: 1,
+              color: theme.primary.withOpacity(0.08),
             ),
+            // const SizedBox(height: 8),
             FadeSlideIn(
-              delay: const Duration(milliseconds: 220),
+              delay: const Duration(milliseconds: 90),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    SocialMediaIconButton(
-                      borderColor: theme.alternate,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      buttonSize: 48,
-                      fillColor: theme.secondaryBackground,
-                      icon: FaIcon(
-                        FontAwesomeIcons.instagram,
-                        color: theme.secondaryText,
-                        size: 24,
-                      ),
-                      onPressed: () => _showFollowBox('instagram'),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _sendEmail(
+                    'KindMap - Quick Assistance',
+                    email: kQuickSupportEmail,
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: theme.primary.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(14),
+                      border:
+                          Border.all(color: theme.primary.withOpacity(0.12)),
                     ),
-                    SocialMediaIconButton(
-                      borderColor: theme.alternate,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      buttonSize: 48,
-                      fillColor: theme.secondaryBackground,
-                      icon: FaIcon(
-                        FontAwesomeIcons.facebookF,
-                        color: theme.secondaryText,
-                        size: 24,
-                      ),
-                      onPressed: () => _showFollowBox('facebook'),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.bolt_rounded,
+                            size: 18, color: theme.primary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              style: theme.labelSmall.copyWith(
+                                color: theme.secondaryText,
+                                height: 1.45,
+                              ),
+                              children: [
+                                const TextSpan(
+                                  text: 'For urgent or time-sensitive issues, '
+                                      'you can reach out directly to ',
+                                ),
+                                TextSpan(
+                                  text: kQuickSupportEmail,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.primaryText,
+                                  ),
+                                ),
+                                const TextSpan(
+                                  text: ' for a quicker response.',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    SocialMediaIconButton(
-                      borderColor: theme.alternate,
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      buttonSize: 48,
-                      fillColor: theme.secondaryBackground,
-                      icon: FaIcon(
-                        FontAwesomeIcons.linkedin,
-                        color: theme.secondaryText,
-                        size: 24,
-                      ),
-                      onPressed: () => _showFollowBox('linkedin'),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
+
+            //// -----Commenting the Follow us section for now
+            // FadeSlideIn(
+            //   delay: const Duration(milliseconds: 200),
+            //   child: const SettingsSectionLabel('Follow us'),
+            // ),
+            // FadeSlideIn(
+            //   delay: const Duration(milliseconds: 220),
+            //   child: Padding(
+            //     padding: const EdgeInsets.symmetric(horizontal: 16),
+            //     child: Row(
+            //       children: [
+            //         SocialMediaIconButton(
+            //           borderColor: theme.alternate,
+            //           borderRadius: 12,
+            //           borderWidth: 1,
+            //           buttonSize: 48,
+            //           fillColor: theme.secondaryBackground,
+            //           icon: FaIcon(
+            //             FontAwesomeIcons.instagram,
+            //             color: theme.secondaryText,
+            //             size: 24,
+            //           ),
+            //           onPressed: () => _showFollowBox('instagram'),
+            //         ),
+            //         SocialMediaIconButton(
+            //           borderColor: theme.alternate,
+            //           borderRadius: 12,
+            //           borderWidth: 1,
+            //           buttonSize: 48,
+            //           fillColor: theme.secondaryBackground,
+            //           icon: FaIcon(
+            //             FontAwesomeIcons.facebookF,
+            //             color: theme.secondaryText,
+            //             size: 24,
+            //           ),
+            //           onPressed: () => _showFollowBox('facebook'),
+            //         ),
+            //         SocialMediaIconButton(
+            //           borderColor: theme.alternate,
+            //           borderRadius: 12,
+            //           borderWidth: 1,
+            //           buttonSize: 48,
+            //           fillColor: theme.secondaryBackground,
+            //           icon: FaIcon(
+            //             FontAwesomeIcons.linkedin,
+            //             color: theme.secondaryText,
+            //             size: 24,
+            //           ),
+            //           onPressed: () => _showFollowBox('linkedin'),
+            //         ),
+            //       ],
+            //     ),
+            //   ),
+            // ),
             const SizedBox(height: 16),
             FadeSlideIn(
               delay: const Duration(milliseconds: 260),

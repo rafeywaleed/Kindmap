@@ -1,11 +1,58 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../config/app_theme.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Settings helpers
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Neither Geolocator.openLocationSettings() nor permission_handler's
+// openAppSettings() have a meaningful destination on web — the former throws
+// (web has no OS location settings page) and the latter silently no-ops
+// (there's no "app settings" page for a website). On web, browsers manage
+// site permissions themselves, so point users there instead.
+
+void _showWebPermissionHint(ScaffoldMessengerState? messenger) {
+  messenger?.showSnackBar(
+    const SnackBar(
+      behavior: SnackBarBehavior.floating,
+      content: Text(
+        'On the web, manage this from your browser\'s site settings — tap '
+        'the lock or info icon next to the address bar.',
+      ),
+    ),
+  );
+}
+
+Future<void> _openLocationSettings(ScaffoldMessengerState? messenger) async {
+  if (kIsWeb) {
+    _showWebPermissionHint(messenger);
+    return;
+  }
+  try {
+    await Geolocator.openLocationSettings();
+  } catch (_) {
+    // No-op if unsupported on this platform.
+  }
+}
+
+Future<void> _openAppSettings(ScaffoldMessengerState? messenger) async {
+  if (kIsWeb) {
+    _showWebPermissionHint(messenger);
+    return;
+  }
+  try {
+    await openAppSettings();
+  } catch (_) {
+    // No-op if unsupported on this platform.
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public API
@@ -62,6 +109,75 @@ Future<void> showCameraPermissionDialog(
     builder: (_) => _LocationDialog(
       type: _LocationDialogType.cameraPermission,
       onSkip: onSkip,
+    ),
+  );
+}
+
+/// Show a one-time, subtle heads-up for web users that location accuracy
+/// and camera performance depend on the browser, and that the mobile app
+/// gives a smoother experience.
+void showWebExperienceSnackBar(BuildContext context) {
+  if (!context.mounted) return;
+  final theme = KMTheme.of(context);
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 6),
+      backgroundColor: theme.secondaryBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.primaryText.withOpacity(0.08)),
+      ),
+      content: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.info_outline_rounded, color: theme.primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'On web, location accuracy and camera speed depend on your '
+              'browser. For the smoothest experience, try the KindMap '
+              'mobile app.',
+              style: theme.bodyMedium.copyWith(
+                color: theme.primaryText,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Show a subtle "no internet connection" snackbar, styled to match the
+/// app's theme rather than the harsh default red Material snackbar.
+void showNoInternetSnackBar(BuildContext context) {
+  if (!context.mounted) return;
+  final theme = KMTheme.of(context);
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: theme.secondaryBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.primaryText.withOpacity(0.08)),
+      ),
+      content: Row(
+        children: [
+          Icon(Icons.wifi_off_rounded, color: theme.warning, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'No internet connection. Some features may not work.',
+              style: theme.bodyMedium.copyWith(
+                color: theme.primaryText,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -190,8 +306,9 @@ class _LocationDialogState extends State<_LocationDialog>
           primaryLabel: 'Enable location',
           secondaryLabel: 'Not now',
           onPrimary: () async {
+            final messenger = ScaffoldMessenger.maybeOf(context);
             Navigator.pop(context);
-            await Geolocator.openLocationSettings();
+            await _openLocationSettings(messenger);
           },
         );
 
@@ -203,11 +320,12 @@ class _LocationDialogState extends State<_LocationDialog>
           title: 'Permission required',
           subtitle:
               'Grant location access so KindMap can show nearby help requests and guide you to them.',
-          primaryLabel: 'Open settings',
+          primaryLabel: kIsWeb ? 'How to allow' : 'Open settings',
           secondaryLabel: 'Continue without',
           onPrimary: () async {
+            final messenger = ScaffoldMessenger.maybeOf(context);
             Navigator.pop(context);
-            await openAppSettings();
+            await _openAppSettings(messenger);
           },
           onSecondary: () {
             Navigator.pop(context);
@@ -223,11 +341,12 @@ class _LocationDialogState extends State<_LocationDialog>
           title: 'Stay in the loop',
           subtitle:
               'Allow notifications to get alerted when new help requests appear near you.',
-          primaryLabel: 'Allow notifications',
+          primaryLabel: kIsWeb ? 'How to allow' : 'Allow notifications',
           secondaryLabel: 'Maybe later',
           onPrimary: () async {
+            final messenger = ScaffoldMessenger.maybeOf(context);
             Navigator.pop(context);
-            await openAppSettings();
+            await _openAppSettings(messenger);
           },
         );
 
@@ -240,11 +359,12 @@ class _LocationDialogState extends State<_LocationDialog>
           title: 'Camera access needed',
           subtitle:
               'Allow camera access so you can take a photo and pin someone on the map.',
-          primaryLabel: 'Open settings',
+          primaryLabel: kIsWeb ? 'How to allow' : 'Open settings',
           secondaryLabel: 'Not now',
           onPrimary: () async {
+            final messenger = ScaffoldMessenger.maybeOf(context);
             Navigator.pop(context);
-            await openAppSettings();
+            await _openAppSettings(messenger);
           },
           onSecondary: () {
             Navigator.pop(context);

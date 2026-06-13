@@ -55,19 +55,19 @@ class _SettingsBackButtonState extends State<SettingsBackButton>
         },
         onTapCancel: () => _ctrl.reverse(),
         child: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: theme.primaryText.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(13),
-            border: Border.all(
-              color: theme.primaryText.withOpacity(0.07),
-              width: 1,
-            ),
-          ),
+          width: 36,
+          height: 36,
+          // decoration: BoxDecoration(
+          //   color: theme.primaryText.withOpacity(0.06),
+          //   borderRadius: BorderRadius.circular(12),
+          //   border: Border.all(
+          //     color: theme.primaryText.withOpacity(0.07),
+          //     width: 1,
+          //   ),
+          // ),
           child: Icon(
             Icons.arrow_back_ios_new_rounded,
-            size: 18,
+            size: 16,
             color: theme.primaryText,
           ),
         ),
@@ -85,7 +85,7 @@ PreferredSizeWidget settingsAppBar(BuildContext context, String title) {
     automaticallyImplyLeading: false,
     elevation: 0,
     scrolledUnderElevation: 0,
-    leadingWidth: 64,
+    leadingWidth: 60,
     leading: const Padding(
       padding: EdgeInsets.only(left: 12),
       child: SettingsBackButton(),
@@ -314,15 +314,12 @@ class _SettingsTileState extends State<SettingsTile> {
     final iconColor = widget.iconColor ?? theme.primary;
 
     return GestureDetector(
-      onTapDown: widget.onTap == null
-          ? null
-          : (_) => setState(() => _pressed = true),
-      onTapUp: widget.onTap == null
-          ? null
-          : (_) => setState(() => _pressed = false),
-      onTapCancel: widget.onTap == null
-          ? null
-          : () => setState(() => _pressed = false),
+      onTapDown:
+          widget.onTap == null ? null : (_) => setState(() => _pressed = true),
+      onTapUp:
+          widget.onTap == null ? null : (_) => setState(() => _pressed = false),
+      onTapCancel:
+          widget.onTap == null ? null : () => setState(() => _pressed = false),
       onTap: widget.onTap,
       child: AnimatedScale(
         scale: _pressed ? 0.985 : 1.0,

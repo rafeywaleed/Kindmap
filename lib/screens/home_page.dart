@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,11 +10,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_theme.dart';
 import '../providers/profile_provider.dart';
+import '../services/connectivity_service.dart';
 import '../services/permission_service.dart';
 import '../providers/theme_provider.dart';
 import '../widgets/map.dart';
 import '../widgets/pin_someone.dart';
-import 'app_walkthrough.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -43,8 +44,31 @@ class _HomePageState extends State<HomePage>
   void didChangeAppLifecycleState(AppLifecycleState state) {}
 
   Future<void> _initializeApp() async {
+    await _checkConnectivity();
     await _requestPermissions();
-    await _maybeShowWalkthrough();
+    await _showWebExperienceNotice();
+  }
+
+  Future<void> _checkConnectivity() async {
+    if (!await hasNetworkConnection() && mounted) {
+      showNoInternetSnackBar(context);
+    }
+  }
+
+  static const _webNoticeShownKey = 'has_shown_web_experience_notice';
+
+  Future<void> _showWebExperienceNotice() async {
+    if (!kIsWeb) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_webNoticeShownKey) ?? false) return;
+    await prefs.setBool(_webNoticeShownKey, true);
+
+    if (mounted) {
+      // Small delay so the map renders first — feels more intentional
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (mounted) showWebExperienceSnackBar(context);
+    }
   }
 
   static const _notificationDialogShownKey =
@@ -67,20 +91,6 @@ class _HomePageState extends State<HomePage>
       await Future.delayed(const Duration(milliseconds: 800));
       if (mounted) showNotificationPermissionDialog(context);
     }
-  }
-
-  Future<void> _maybeShowWalkthrough() async {
-    if (await hasSeenWalkthrough()) return;
-    if (!mounted) return;
-    // Small delay so the map renders first before the walkthrough opens.
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AppWalkthroughScreen(),
-        fullscreenDialog: true,
-      ),
-    );
   }
 
   void _showPermissionDialog(String title, String message, String type) {

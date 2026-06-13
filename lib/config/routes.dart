@@ -31,7 +31,7 @@ final appRoutes = {
   //     ),
   '/splash': (context) => const SplashScreen(),
   '/auth': (context) => const LoginForm(),
-  '/home': (context) =>  const HomePage(),
+  '/home': (context) => const HomePage(),
   '/camera': (context) => const CameraPage(),
   '/settings': (context) => const SettingsPage(),
   '/profile': (context) => const ProfilePage(),
@@ -44,6 +44,7 @@ final appRoutes = {
   '/permissions': (context) => const Permissions(),
   '/privacypolicy': (context) => const PrivacyPolicy(),
   '/notifications': (context) => const Notifications(),
-  '/avatars': (context) => const Avatars(),
+  '/avatars': (context) => const Avatars(fromSignUp: false),
+  '/avatars_signup': (context) => const Avatars(fromSignUp: true),
   '/walkthrough': (context) => const AppWalkthroughScreen(),
 };

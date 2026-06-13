@@ -20,7 +20,6 @@ abstract class KMTheme {
   @Deprecated('Use tertiary instead')
   Color get tertiaryColor => tertiary;
 
-  late Color splashBackground;
   late Color primary;
   late Color secondary;
   late Color tertiary;
@@ -133,7 +132,6 @@ class LightModeTheme extends KMTheme {
   // late Color primaryBtnText = Color(0xFFFFFFFFFF);
   // late Color lineColor = Color(0xFFFFE0E3E7);
   // late Color backgroundComponents = Color(0xFF1D2428);
-  late Color splashBackground = Colors.white;
   late Color primary = const Color.fromARGB(212, 0, 0, 0);
   late Color secondary = const Color(0xFFFFFFFF);
   late Color tertiary = const Color(0xFFFAC6C3);
@@ -338,7 +336,6 @@ class DarkModeTheme extends KMTheme {
   // late Color lineColor = Color(0xFF22282F);
   // late Color backgroundComponents = Color(0xFF1B2428);
 
-  late Color splashBackground = Color(0xFF5E5E5E);
   late Color primary = const Color(0xFFFFFFFF);
   late Color secondary = const Color(0xD6E5151E);
   late Color tertiary = const Color(0xFF5E5E5E);

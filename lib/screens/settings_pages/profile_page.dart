@@ -6,6 +6,7 @@ import '../../config/app_theme.dart';
 import '../../controllers/user_controller.dart';
 import '../../providers/profile_provider.dart';
 import '../../widgets/settings_widgets.dart';
+import '../avatars.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -153,27 +154,143 @@ class _ProfilePageState extends State<ProfilePage>
   }
 
   Future<void> _onAvatarDoubleTap() async {
-    final confirm = await showDialog<bool>(
+    final theme = KMTheme.of(context);
+    showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Avatar?'),
-        content: const Text('Do you want to change your avatar?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('No'),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.primaryBackground,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: theme.primaryText.withOpacity(0.08)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: theme.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: theme.primary.withOpacity(0.15),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.image_outlined,
+                          color: theme.primary,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Change Avatar?',
+                        style: theme.headlineSmall.copyWith(
+                          fontFamily: 'Outfit',
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Browse and select from a collection of avatars',
+                        textAlign: TextAlign.center,
+                        style: theme.bodyMedium.copyWith(
+                          color: theme.secondaryText,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            style: TextButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: theme.primaryText.withOpacity(0.12),
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: theme.bodyMedium.copyWith(
+                                fontFamily: 'Readex Pro',
+                                fontWeight: FontWeight.w600,
+                                color: theme.primaryText,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop(true);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Change',
+                              style: theme.bodyMedium.copyWith(
+                                fontFamily: 'Readex Pro',
+                                fontWeight: FontWeight.w600,
+                                color: theme.primaryBtnText,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Yes'),
-          ),
-        ],
+        ),
       ),
-    );
-
-    if (confirm == true && mounted) {
-      Navigator.of(context).pushNamed('/avatars');
-    }
+    ).then((result) {
+      if (result == true && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const Avatars(fromSignUp: false),
+          ),
+        );
+      }
+    });
   }
 
   InputDecoration _inputDecoration(
@@ -217,8 +334,18 @@ class _ProfilePageState extends State<ProfilePage>
   String _formatDate(DateTime? date) {
     if (date == null) return 'N/A';
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
@@ -331,53 +458,55 @@ class _ProfilePageState extends State<ProfilePage>
                   ),
                 ),
               ),
-              FadeSlideIn(
-                delay: const Duration(milliseconds: 60),
-                child: SettingsCard(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Image.asset(
-                              'assets/images/trophy.png',
-                              width: 56,
-                              height: 56,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'People you\'ve helped',
-                                  style: theme.labelMedium.copyWith(
-                                    color: theme.secondaryText,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  profile.user?.helped.toString() ?? '0',
-                                  style: theme.headlineLarge.copyWith(
-                                    fontFamily: 'Outfit',
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+
+              ////---------- Commenting down the help count
+              // FadeSlideIn(
+              //   delay: const Duration(milliseconds: 60),
+              //   child: SettingsCard(
+              //     children: [
+              //       Padding(
+              //         padding: const EdgeInsets.all(16),
+              //         child: Row(
+              //           children: [
+              //             ClipRRect(
+              //               borderRadius: BorderRadius.circular(14),
+              //               child: Image.asset(
+              //                 'assets/images/trophy.png',
+              //                 width: 56,
+              //                 height: 56,
+              //                 fit: BoxFit.cover,
+              //               ),
+              //             ),
+              //             const SizedBox(width: 16),
+              //             Expanded(
+              //               child: Column(
+              //                 crossAxisAlignment: CrossAxisAlignment.start,
+              //                 children: [
+              //                   Text(
+              //                     'People you\'ve helped',
+              //                     style: theme.labelMedium.copyWith(
+              //                       color: theme.secondaryText,
+              //                     ),
+              //                   ),
+              //                   const SizedBox(height: 2),
+              //                   Text(
+              //                     profile.user?.helped.toString() ?? '0',
+              //                     style: theme.headlineLarge.copyWith(
+              //                       fontFamily: 'Outfit',
+              //                       fontSize: 32,
+              //                       fontWeight: FontWeight.w800,
+              //                       letterSpacing: 0,
+              //                     ),
+              //                   ),
+              //                 ],
+              //               ),
+              //             ),
+              //           ],
+              //         ),
+              //       ),
+              //     ],
+              //   ),
+              // ),
               const FadeSlideIn(
                 delay: Duration(milliseconds: 110),
                 child: SettingsSectionLabel('Account'),
@@ -391,8 +520,8 @@ class _ProfilePageState extends State<ProfilePage>
                     decoration: BoxDecoration(
                       color: theme.primaryBackground,
                       borderRadius: BorderRadius.circular(16),
-                      border:
-                          Border.all(color: theme.primaryText.withOpacity(0.06)),
+                      border: Border.all(
+                          color: theme.primaryText.withOpacity(0.06)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,8 +590,8 @@ class _ProfilePageState extends State<ProfilePage>
                     decoration: BoxDecoration(
                       color: theme.accent4,
                       borderRadius: BorderRadius.circular(16),
-                      border:
-                          Border.all(color: theme.primaryText.withOpacity(0.08)),
+                      border: Border.all(
+                          color: theme.primaryText.withOpacity(0.08)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

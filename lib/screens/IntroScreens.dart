@@ -3,6 +3,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart'
     as smooth_page_indicator;
 
 import '../config/app_theme.dart';
+import 'app_walkthrough.dart';
 
 class IntroScreens extends StatefulWidget {
   const IntroScreens({super.key});
@@ -236,8 +237,13 @@ class _IntroScreensState extends State<IntroScreens> {
                                   alignment: const AlignmentDirectional(1, 1),
                                   child: CustomButton(
                                     onPressed: () async {
-                                      Navigator.of(context)
-                                          .pushNamed('/avatars');
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const AppWalkthroughScreen(
+                                                  fromSignUp: true),
+                                        ),
+                                      );
                                     },
                                     text: 'Done',
                                     color: KMTheme.of(context).info,
