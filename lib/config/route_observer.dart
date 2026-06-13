@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/routes.dart';
 
 /// Shared route observer so screens can react when they become visible
 /// again after a pushed route (e.g. the camera/pin creation flow) pops.

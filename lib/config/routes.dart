@@ -36,7 +36,7 @@ final appRoutes = {
   '/settings': (context) => const SettingsPage(),
   '/profile': (context) => const ProfilePage(),
   '/map': (context) => const Maps(),
-  '/introScreens': (context) => const IntroScreens(),
+  // '/introScreens': (context) => const IntroScreens(),
   '/donate': (context) => const Donate(),
   '/contact': (context) => const Contact(),
   '/about': (context) => const About(),
@@ -47,4 +47,6 @@ final appRoutes = {
   '/avatars': (context) => const Avatars(fromSignUp: false),
   '/avatars_signup': (context) => const Avatars(fromSignUp: true),
   '/walkthrough': (context) => const AppWalkthroughScreen(),
+  '/walkthrough_signup': (context) =>
+      const AppWalkthroughScreen(fromSignUp: true),
 };

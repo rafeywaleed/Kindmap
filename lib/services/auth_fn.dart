@@ -41,7 +41,7 @@ class AuthServices {
     }
 
     if (!context.mounted) return;
-    Navigator.pushReplacementNamed(context, '/introScreens');
+    Navigator.pushReplacementNamed(context, '/walkthrough_signup');
   }
 
   /// Signs an existing user in. FirebaseAuthExceptions (wrong-password,
@@ -84,8 +84,8 @@ class AuthServices {
             await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
       } on FirebaseAuthException catch (e) {
         if (e.code != 'account-exists-with-different-credential') rethrow;
-        final linked = await _linkGoogleToExistingAccount(
-            context, e, e.credential);
+        final linked =
+            await _linkGoogleToExistingAccount(context, e, e.credential);
         if (linked == null) return;
         userCredential = linked;
       }
@@ -107,8 +107,8 @@ class AuthServices {
             await FirebaseAuth.instance.signInWithCredential(credential);
       } on FirebaseAuthException catch (e) {
         if (e.code != 'account-exists-with-different-credential') rethrow;
-        final linked = await _linkGoogleToExistingAccount(
-            context, e, credential);
+        final linked =
+            await _linkGoogleToExistingAccount(context, e, credential);
         if (linked == null) return;
         userCredential = linked;
       }
@@ -140,7 +140,7 @@ class AuthServices {
 
     if (!context.mounted) return;
     Navigator.pushReplacementNamed(
-        context, isNewUser ? '/introScreens' : '/home');
+        context, isNewUser ? '/walkthrough_signup' : '/home');
   }
 
   /// Resolves an `account-exists-with-different-credential` error by
@@ -160,7 +160,8 @@ class AuthServices {
       throw error;
     }
 
-    final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+    final methods =
+        await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
     if (!methods.contains('password')) {
       throw error;
     }
@@ -212,8 +213,7 @@ class AuthServices {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(controller.text),
+            onPressed: () => Navigator.of(dialogContext).pop(controller.text),
             child: const Text('Link'),
           ),
         ],
