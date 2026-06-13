@@ -101,8 +101,21 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void logout() async {
     await FirebaseAuth.instance.signOut();
-    await GoogleSignIn().signOut();
-    Navigator.pushReplacementNamed(context, '/');
+
+    // On web, Google sign-in goes through FirebaseAuth's popup flow directly
+    // (see AuthServices.signInWithGoogle) — the google_sign_in plugin is
+    // never initialized there, and calling signOut() on it throws, which
+    // would stop this function before it navigates away.
+    if (!kIsWeb) {
+      try {
+        await GoogleSignIn().signOut();
+      } catch (e) {
+        debugPrint('GoogleSignIn signOut failed: $e');
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(context, '/auth', (route) => false);
   }
 
   @override
