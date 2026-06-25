@@ -36,6 +36,15 @@ class ProfileProvider with ChangeNotifier {
     }
   }
 
+  void setUser(User newUser) {
+    _user = newUser;
+    _avatarIndex = newUser.avatarIndex;
+    _email = newUser.email;
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
+  }
+
   Future<void> loadProfile() async {
     if (_userId == null) return;
 

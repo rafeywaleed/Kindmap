@@ -31,16 +31,21 @@ class UserController {
   }
 
   Future<User?> fetchUserById(String userId) async {
-    return await http
-        .get(Uri.parse("https://kindmap.onrender.com/api/v1/users/$userId"))
-        .then((response) {
+    try {
+      final response = await http.get(
+        Uri.parse("https://kindmap.onrender.com/api/v1/users/$userId"),
+      );
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return User.fromJson(data);
-      } else {
-        throw UserFetchException(response);
       }
-    });
+      // Handle other status codes (like 404) by returning null
+      return null;
+    } catch (e) {
+      // Network errors etc. – return null, let the caller decide
+      // debugPrint('Error fetching user: $e');
+      return null;
+    }
   }
 
   Future<User?> addUser(User user) async {

@@ -3,6 +3,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:kindmap/providers/profile_provider.dart';
+import 'package:provider/provider.dart';
 
 import '../controllers/user_controller.dart';
 import '../models/user_model.dart';
@@ -76,9 +78,8 @@ class AuthServices {
   static Future<void> signInWithGoogle(BuildContext context) async {
     UserCredential userCredential;
 
+    // ---------- Firebase Google authentication ----------
     if (kIsWeb) {
-      // GoogleSignIn().signIn() isn't supported on web; Firebase Auth's
-      // popup flow handles the OAuth exchange directly.
       try {
         userCredential =
             await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
@@ -114,35 +115,71 @@ class AuthServices {
       }
     }
 
-    final user = userCredential.user!;
-    final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+    final firebaseUser = userCredential.user!;
+    final uid = firebaseUser.uid;
 
-    // Best-effort backend sync — non-critical if it fails.
+    // ---------- Check if user exists in backend ----------
+    User? existingUser;
     try {
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      if (isNewUser) {
-        await UserController().addUser(User(
-          userId: user.uid,
-          name: user.displayName ?? 'KindMap User',
-          email: user.email ?? '',
-          joinedDate: DateTime.now(),
-          avatarIndex: 1,
-          helped: 0,
-          token: fcmToken ?? '',
-          subscribedGridIds: [],
-        ));
-      } else {
-        await UserController().updateFCMToken(user.uid, fcmToken ?? '');
-      }
-    } catch (e) {
-      debugPrint('Failed to sync backend profile: $e');
+      existingUser = await UserController().fetchUserById(uid);
+    } catch (_) {
+      debugPrint('User not in backend, will create a new profile.');
     }
 
-    if (!context.mounted) return;
-    // Every Google sign-in (new account or existing) goes through the
-    // walkthrough/avatar flow — only a normal email/password sign-in to an
-    // existing account goes straight to '/home'.
-    Navigator.pushReplacementNamed(context, '/walkthrough_signup');
+    // ---------- FCM token (best-effort) ----------
+    String? fcmToken;
+    try {
+      fcmToken = await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      debugPrint('Failed to get FCM token: $e');
+    }
+
+    if (existingUser != null) {
+      // ---------- EXISTING USER ----------
+      // Update FCM token silently
+      try {
+        await UserController().updateFCMToken(uid, fcmToken ?? '');
+      } catch (e) {
+        debugPrint('Failed to update FCM token: $e');
+      }
+
+      if (!context.mounted) return;
+
+      // Optional: feed the existing user into the provider to guarantee it's fresh
+      context.read<ProfileProvider>().setUser(existingUser);
+
+      // Existing users go straight to home
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      // ---------- NEW USER ----------
+      final newUser = User(
+        userId: uid,
+        name: firebaseUser.displayName ?? 'KindMap User',
+        email: firebaseUser.email ?? '',
+        joinedDate: DateTime.now(),
+        avatarIndex: 1,
+        helped: 0,
+        token: fcmToken ?? '',
+        subscribedGridIds: [],
+      );
+
+      User? createdUser;
+      try {
+        createdUser = await UserController().addUser(newUser);
+      } catch (e) {
+        debugPrint('Failed to create backend profile: $e');
+      }
+
+      if (!context.mounted) return;
+
+      // 🔥 Push the freshly created user into the provider
+      if (createdUser != null) {
+        context.read<ProfileProvider>().setUser(createdUser);
+      }
+
+      // New users go through the walkthrough/avatar flow
+      Navigator.pushReplacementNamed(context, '/walkthrough_signup');
+    }
   }
 
   /// Resolves an `account-exists-with-different-credential` error by
